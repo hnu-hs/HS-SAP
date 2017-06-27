@@ -260,7 +260,7 @@ class PlotToExcel():
         
         self.mktindex = MktIndexHandle()     
         
-        self.filename = 'E:\\HS-SAP\\PySAP-Master\\PlotData\\export\\excel\\test.xlsx'
+        self.filename = 'F:\\HS-SAP\\PySAP-Master\\PlotData\\export\\excel\\test.xlsx'
         
         pass;
           
@@ -794,7 +794,23 @@ class PlotToExcel():
                    
         else:
             
-           xdhead_idf = xd_idf   
+           
+           for sloc in range(idf_len):
+               
+               headitem  = sortlist[sloc]
+               
+               headlist.append(headitem[0])
+           
+          
+           for hlist in headlist:
+            
+             dictkey = str(hlist) 
+           
+             if(bkidf_dict.has_key(dictkey)):
+               
+               bkitem = bkidf_dict[dictkey]
+               
+               xdhead_idf=  xdhead_idf.append(bkitem) 
             
         return xdhead_idf,xdtail_idf
 
@@ -891,7 +907,7 @@ if '__main__'==__name__:
     
     tailIndexs=''
     
-    rankingnum =30
+    rankingnum =56
     
     bkdict = bkLinedf.set_index('bz_indexcode')['bz_name'].to_dict()
     
