@@ -488,7 +488,65 @@ class PlotToExcel():
            
         
         return bk_chart
+    
+     
+    
+    def bulidALLChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,bkCount):
         
+        bk_chart = wbk.add_chart({'type': 'line'})
+               
+        bk_chart.set_style(4)
+    
+        #基准无需变动
+        
+        bk_chart.add_series({
+         'name':[idxstr, data_top2+1, data_left2+1],
+         'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
+         'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
+         'line':{'color':'blue'},  
+                  
+         })             
+     
+    
+        #向图表添加数据 
+        for icount in range(bkCount):
+                
+            bk_chart.add_series({
+             'name':[idxstr, data_top+1, data_left+1],
+             'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
+             'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
+             'line':{'color':'red'},
+             'y2_axis': True, 
+                    
+             })                 
+            
+            data_top+=bkidf_len +2
+            
+        #bold = wbk.add_format({'bold': 1})
+     
+     
+        bk_chart.set_title({'name':bktile,
+                           'name_font': {'size': 10, 'bold': True}
+                          })
+                                   
+        bk_chart.set_x_axis({'name_font': {'size': 10, 'bold': True},
+                            'label_position': 'low',
+                            'interval_unit': 2
+                    
+                          })
+                        
+        bk_chart.set_y_axis({'name':u'日期',
+                            'name_font': {'size': 10, 'bold': True}
+                       })
+   
+        bk_chart.set_y_axis({'name':'',
+                        'name_font': {'size': 10, 'bold': True}
+                        })
+                       
+        bk_chart.set_size({'width':897,'height':300})
+           
+        
+        return bk_chart    
     #构建指数excel构架，,data_left,pic_lef,data_top,pic_top 分别代表数据，图像的 x，y坐标
     
     def bulidExcelPic(self,bkidf_list,wbk,QR_Sheet,Data_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top):      
@@ -592,12 +650,16 @@ class PlotToExcel():
            
         #取出排名指数,写入到excel文件中
            
+        bkcount = 0
+           
         if len(bkidf_list)>0:
             lastfile = bkidf_list[-1]
            
         for dflist in  bkidf_list:
             
            if len(dflist)==2:
+               
+               bkcount  = bkcount +1            
                
                bkidf_code  = dflist[0]
                bkidf_item  = dflist[1]
@@ -630,54 +692,59 @@ class PlotToExcel():
                                                   
                   Data_Sheet.write_row(data_top+row+1, data_left,datalist)
                
-               
-               idxstr  = u'指数数据'
-               
-               #指数参数设置
-               shift =10
-               
-               data_top2 = 0
-               
-               data_left2 = 0
-               
-               shift2  = 3
-               
-               style   = 1
-               
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,style)
-                    
-               #画出双轴对比图
-               
-               QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
-                #bg+=19       
-             
-               pic_lef+=len(xdiColumns)+2
-               
-               #画成交量与成交金额相对相对量比
-               
-               shift =11
-               
-               data_top2 = data_top
-               
-               data_left2 = data_left
-               
-               shift2  = 12
-               
-               style   = 2
-               
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,style)
-                    
-               #画出双轴对比图
-               
-               QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
-                #bg+=19       
-                      
                data_top+=bkidf_len +2
                
-               pic_top+=15
-               
-               if lastfile!=dflist: 
-                   pic_lef-=len(xdiColumns) +2
+               #每隔固定几个值进行读取
+               if bkcount%5 ==0:
+                     
+                   idxstr  = u'指数数据'
+                   
+                   #指数参数设置
+                   shift =10
+                   
+                   #第一次赋值为0 
+                   if bkcount==5:
+                       dstart_top = 0
+                   
+                   data_top2 = 0
+                   
+                   data_left2 = 0
+                   
+                   shift2  = 3
+                   
+                   
+                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,5)
+                        
+                   #画出双轴对比图
+                   
+                   QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                    #bg+=19       
+                 
+                   pic_lef+=len(xdiColumns)+2
+                   
+                   #画成交量与成交金额相对相对量比
+                   
+                   shift =11
+                   
+                   data_top2 = dstart_top
+                   
+                   data_left2 = data_left
+                   
+                   shift2  = 12
+                                      
+                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,5)
+                        
+                   #画出双轴对比图
+                   
+                   QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                    #bg+=19       
+                          
+                   dstart_top = data_top
+                   
+                   pic_top+=15
+                   
+                   if lastfile!=dflist: 
+                       pic_lef-=len(xdiColumns) +2
                
         
         pic_lef+=len(xdiColumns) +2   
@@ -1126,9 +1193,6 @@ if '__main__'==__name__:
     bkdict[benchmarkIndex]=benchmarkName
     
     #指数分类对比图
-    pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,start_date,end_date,KlineType,rankingnum,bkdict)
-    
-    #指数分类对比图(所有图形)
     pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,start_date,end_date,KlineType,rankingnum,bkdict)
     
     
