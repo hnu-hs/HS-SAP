@@ -258,9 +258,11 @@ class PlotToExcel():
     #初始化程序
     def __init__(self):
         
-        self.mktindex = MktIndexHandle()     
+        self.mktindex = MktIndexHandle()
+                
+        self.BCfname = '\\PlotData\\export\\excel\\板块强弱分类数据.xlsx'
         
-        self.filename = 'F:\\HS-SAP\\PySAP-Master\\PlotData\\export\\excel\\test.xlsx'
+        self.BAfname = '\\PlotData\\export\\excel\\板块强弱数据.xlsx'
         
         pass;
           
@@ -427,13 +429,13 @@ class PlotToExcel():
        
         #向图表添加数据 
         
-               
         if style==1:
             bk_chart.add_series({
              'name':[idxstr, data_top+1, data_left+1],
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
              'line':{'color':'red'},
+             'y2_axis': True, 
                     
              })            
             
@@ -442,7 +444,7 @@ class PlotToExcel():
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
              'line':{'color':'blue'},  
-             'y2_axis': True,            
+                      
              })
         else: 
              
@@ -451,7 +453,7 @@ class PlotToExcel():
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
              'line':{'color':'FF6347'},
-                    
+             'y2_axis': True,      
              }) 
                           
              bk_chart.add_series({
@@ -459,7 +461,7 @@ class PlotToExcel():
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
              'line':{'color':'708090'},  
-             'y2_axis': True,            
+                       
              })
         #bold = wbk.add_format({'bold': 1})
      
@@ -484,7 +486,6 @@ class PlotToExcel():
                        
         bk_chart.set_size({'width':897,'height':300})
            
-        
         
         return bk_chart
         
@@ -581,6 +582,102 @@ class PlotToExcel():
                if lastfile!=dflist: 
                    pic_lef-=len(xdiColumns) +2
                
+        
+        pic_lef+=len(xdiColumns) +2   
+        
+        return wbk,pic_lef
+        
+        
+    def bulidAllExcelPic(self,bkidf_list,wbk,QR_Sheet,Data_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top):      
+           
+        #取出排名指数,写入到excel文件中
+           
+        if len(bkidf_list)>0:
+            lastfile = bkidf_list[-1]
+           
+        for dflist in  bkidf_list:
+            
+           if len(dflist)==2:
+               
+               bkidf_code  = dflist[0]
+               bkidf_item  = dflist[1]
+               
+               bkidf_item = bkidf_item.dropna(how='any')
+               
+               bkhead = bkidf_item.head(1)
+               
+               bkname = bkhead['hq_name'].values
+               
+               bkname = bkname[0]
+               
+               bktile = bkname +'('+bkidf_code+')'
+               
+               bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
+               
+               bkidf_len   = len(bkidf_item)
+               
+               #写入头
+               Data_Sheet.write_row(data_top, data_left,xdiColumns)
+               
+               #写入内容
+                   
+               for row in range(0,bkidf_len):   
+                  #for col in range(left,len(fields)+left):  
+                  
+                  tmplist  = bkidf_item[row:row+1].values.tolist()
+                                              
+                  datalist = tmplist[0]
+                                                  
+                  Data_Sheet.write_row(data_top+row+1, data_left,datalist)
+               
+               
+               idxstr  = u'指数数据'
+               
+               #指数参数设置
+               shift =10
+               
+               data_top2 = 0
+               
+               data_left2 = 0
+               
+               shift2  = 3
+               
+               style   = 1
+               
+               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,style)
+                    
+               #画出双轴对比图
+               
+               QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                #bg+=19       
+             
+               pic_lef+=len(xdiColumns)+2
+               
+               #画成交量与成交金额相对相对量比
+               
+               shift =11
+               
+               data_top2 = data_top
+               
+               data_left2 = data_left
+               
+               shift2  = 12
+               
+               style   = 2
+               
+               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,style)
+                    
+               #画出双轴对比图
+               
+               QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                #bg+=19       
+                      
+               data_top+=bkidf_len +2
+               
+               pic_top+=15
+               
+               if lastfile!=dflist: 
+                   pic_lef-=len(xdiColumns) +2
                
         
         pic_lef+=len(xdiColumns) +2   
@@ -631,9 +728,20 @@ class PlotToExcel():
         
         pic_top   = 2    #图像起始行
         
-        wbk =xlsxwriter.Workbook(self.filename)  
+        
+        pwd   =  os.getcwd()
+        
+        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
+        
+        execlfname  = fpwd + self.BCfname
+        
+        execlfname  = execlfname.decode()
+        
+        wbk =xlsxwriter.Workbook(execlfname)  
         #newwbk = copy(wbk)
         QR_Sheet   = wbk.add_worksheet(u'指数相对强弱')
+#                
+#        HEQR_Sheet   = wbk.add_worksheet(u'指数混合强弱')
     
         Data_Sheet = wbk.add_worksheet(u'指数数据')
         
@@ -670,6 +778,14 @@ class PlotToExcel():
         QR_Sheet.set_column(3*xdiColumnlens+5,3*xdiColumnlens+5,0.3,JG)
         
         QR_Sheet.merge_range(0,3*xdiColumnlens+6,1,4*xdiColumnlens+6,tailvol,blue)
+#               
+#        #处理第一行excel格式
+#        HEQR_Sheet.merge_range(0,0,1,xdiColumnlens,headStr,red)         
+#        HEQR_Sheet.set_column(xdiColumnlens+1,xdiColumnlens+1,0.3,JG)
+#
+#        HEQR_Sheet.merge_range(0,xdiColumnlens+2,1,2*xdiColumnlens+2,headvol,blue)               
+#        HEQR_Sheet.set_column(2*xdiColumnlens+3,2*xdiColumnlens+3,0.3,JG)
+                
         
         #基准数据写入数据sheet中
         if len(bmidf)>0:
@@ -705,9 +821,91 @@ class PlotToExcel():
             bkidf_list = list(xdtail_group)
             
             (wbk,pic_left)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,Data_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top)
-          
+               
         wbk.close()
+        
+     
+    def bulidAllIndexExcelFrame(self,bmidf,xdtmp_idf):
+                
+        data_left = 0    #数据起始列
+        
+        pic_left  = 0    #图像起始列 
+        
+        data_top  = 0    #数据起始行
+        
+        pic_top   = 2    #图像起始行
+        
+        
+        pwd   =  os.getcwd()
+        
+        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
+        
+        execlfname  = fpwd + self.BAfname
+        
+        execlfname  = execlfname.decode()
+        
+        wbk =xlsxwriter.Workbook(execlfname)  
+        #newwbk = copy(wbk)
+        QR_Sheet   = wbk.add_worksheet(u'指数相对强弱')
+#                
+#        HEQR_Sheet   = wbk.add_worksheet(u'指数混合强弱')
+    
+        Data_Sheet = wbk.add_worksheet(u'指数数据')
+        
+        #画模块
+        headStr='指数强弱排名（涨幅）'
+        
+        headvol= '指数量比（金额）'
+        
+        
+        xdiColumns= list([u'板块代码', u'板块名称', u'日期', u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
+              
+        xdiColumnlens = len(xdiColumns)   
+        
+        red = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'C0504D','font_size':16,'font_color':'white'})
+        
+        blue = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'8064A2','font_size':16,'font_color':'white'})
+        
+        
+        #间隔格式
+        JG = wbk.add_format({'bg_color':'CCC0DA'})
+        
+        #处理第一行excel格式
+        QR_Sheet.merge_range(0,0,1,xdiColumnlens,headStr,red)         
+        QR_Sheet.set_column(xdiColumnlens+1,xdiColumnlens+1,0.3,JG)
+
+        QR_Sheet.merge_range(0,xdiColumnlens+2,1,2*xdiColumnlens+2,headvol,blue)               
+        QR_Sheet.set_column(2*xdiColumnlens+3,2*xdiColumnlens+3,0.3,JG)
+               
+        
+        #基准数据写入数据sheet中
+        if len(bmidf)>0:
+            bmidf_group = bmidf.groupby('hq_code')
+    
+            bmi_list = list(bmidf_group)
+            
+            bmiColumns = list([u'基准指数代码', u'基准指数名称', u'日期', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
+            
+            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
+            Data_Sheet = self.bulidIndexDataToExcel(bmi_list,Data_Sheet,bmiColumns,data_left,data_top)
+            
+            data_left = data_left +len(bmiColumns) +2
+        
+        if len(xdtmp_idf)>0:
+            
+            #数据分组        
+            xdtmp_group = xdtmp_idf.groupby('hq_code',sort=False)
+            
+            bkidf_list= list(xdtmp_group)
+                        
+            (wbk,pic_left)  = self.bulidAllExcelPic(bkidf_list,wbk,QR_Sheet,Data_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top)
+            
+            data_left = data_left+xdiColumnlens+2
+                                       
+        wbk.close()
+
+               
     #处理指数数据
     def getExcelIndexData(self,bmidf,bkdict):
         
@@ -745,15 +943,39 @@ class PlotToExcel():
         headlist = []
         
         taillist = []
+
+        tmplist = []
         
         bkidf_group = xd_idf.groupby('hq_code')
             
         #生成排名dict        
         bkidf_dict = dict(list(bkidf_group))
         
+        
+        xdtmp_idf = pd.DataFrame()
+        
         xdhead_idf = pd.DataFrame()
         
         xdtail_idf = pd.DataFrame()
+    
+        #先整体df进行排序，然后再进行分类
+    
+        for sloc in range(idf_len):
+            
+            tmpitem  = sortlist[sloc]
+                       
+            tmplist.append(tmpitem[0])
+       
+      
+        for tlist in tmplist:
+        
+          dictkey = str(tlist) 
+       
+          if(bkidf_dict.has_key(dictkey)):
+           
+            bkitem = bkidf_dict[dictkey]
+           
+            xdtmp_idf=  xdtmp_idf.append(bkitem) 
         
         #如果个数大于，指定显示数量
         if idf_len>0 and rankingnum<idf_len:
@@ -794,25 +1016,10 @@ class PlotToExcel():
                    
         else:
             
+            xdhead_idf = xdtmp_idf
            
-           for sloc in range(idf_len):
-               
-               headitem  = sortlist[sloc]
-               
-               headlist.append(headitem[0])
-           
-          
-           for hlist in headlist:
             
-             dictkey = str(hlist) 
-           
-             if(bkidf_dict.has_key(dictkey)):
-               
-               bkitem = bkidf_dict[dictkey]
-               
-               xdhead_idf=  xdhead_idf.append(bkitem) 
-            
-        return xdhead_idf,xdtail_idf
+        return xdtmp_idf,xdhead_idf,xdtail_idf
 
         
     #excel中plot相对指数强弱图形
@@ -855,12 +1062,15 @@ class PlotToExcel():
         ebmidf  = self.getExcelIndexData(bmidf,bkdict)
         
         # 获取前几，后几排名数据     
-        (xdhead_idf,xdtail_idf) =self.getSortedIndexdf(xd_idf,sortlist,rankingnum)
+        (xdtmp_idf,xdhead_idf,xdtail_idf) =self.getSortedIndexdf(xd_idf,sortlist,rankingnum)
         
         #画出指数排名图形
         self.bulidIndexExcelFrame(ebmidf,xdhead_idf,xdtail_idf)
+                
+        #画出指数排名图形（所有图形）
+        self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf)
         
-
+        
 if '__main__'==__name__:  
     
     pte = PlotToExcel()
@@ -914,7 +1124,11 @@ if '__main__'==__name__:
     
     
     bkdict[benchmarkIndex]=benchmarkName
+    
     #指数分类对比图
+    pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,start_date,end_date,KlineType,rankingnum,bkdict)
+    
+    #指数分类对比图(所有图形)
     pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,start_date,end_date,KlineType,rankingnum,bkdict)
     
     
