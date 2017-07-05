@@ -342,11 +342,13 @@ class MktStockHandle:
         sDate_Start = sDate_Start.strftime( '%Y-%m-%d' )
         
         sDate_End = sDate_End.strftime( '%Y-%m-%d' )        
-        
-        
+                
         sTime_Start = '00:00:00'
-        
-        sTime_End   = '15:00:00'
+               
+        if speriod=="D":                 
+           sTime_End = '00:00:00'
+        else:
+           sTime_End = '15:00:00'
             
         strstart = ' UNIX_TIMESTAMP(\''+sDate_Start +' ' + sTime_Start+'\')'
         
@@ -354,10 +356,10 @@ class MktStockHandle:
         
         # 处理1分钟数据       
         if speriod=="1M":
-            
-           mkquerysql = "select * from stock1min as hiq where hiq.hq_code =" + securityID + " and "
+                        
+           mkquerysql = "select * from hstockquotationone as hiq where hiq.hq_code " + securityID
                                        
-           strsql = " UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
+           strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
            mkquerysql = mkquerysql + strsql
            
@@ -366,9 +368,9 @@ class MktStockHandle:
         # 处理5分钟数据       
         if speriod=="5M":
             
-           mkquerysql = "select * from hstockquotationone where hq_code =" + securityID
+           mkquerysql = "select * from hstockquotationone as hiq where hiq.hq_code " + securityID
            
-           strsql = "and hq_date>="+sDate_Start +" and hq_date<=" +sDate_End + " and hq_time>="+sTime_Start  + " and hq_time<="+sTime_End 
+           strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
            mkquerysql = mkquerysql + strsql
            
@@ -377,9 +379,9 @@ class MktStockHandle:
         # 处理15分钟数据       
         if speriod=="15M":
             
-           mkquerysql = "select * from hstockquotationone where hq_code =" + securityID
-           
-           strsql = "and hq_date>="+sDate_Start +" and hq_date<=" +sDate_End + " and hq_time>="+sTime_Start  + " and hq_time<="+sTime_End 
+           mkquerysql = "select * from hstockquotationone as hiq where hiq.hq_code " + securityID
+      
+           strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
            mkquerysql = mkquerysql + strsql
            
@@ -388,9 +390,9 @@ class MktStockHandle:
         # 处理30分钟数据       
         if speriod=="30M":
             
-           mkquerysql = "select * from hstockquotationone where hq_code =" + securityID
+           mkquerysql = "select * from hstockquotationone as hiq where hiq.hq_code " + securityID
            
-           strsql = "and hq_date>="+sDate_Start +" and hq_date<=" +sDate_End + " and hq_time>="+sTime_Start  + " and hq_time<="+sTime_End 
+           strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
            mkquerysql = mkquerysql + strsql
            
@@ -398,9 +400,9 @@ class MktStockHandle:
         # 处理60分钟数据       
         if speriod=="60M":
             
-           mkquerysql = "select * from hstockquotationone where hq_code =" + securityID
+           mkquerysql = "select * from hstockquotationone as hiq where hiq.hq_code " + securityID
            
-           strsql = "and hq_date>="+sDate_Start +" and hq_date<=" +sDate_End + " and hq_time>="+sTime_Start  + " and hq_time<="+sTime_End 
+           strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
            mkquerysql = mkquerysql + strsql
            
@@ -409,9 +411,9 @@ class MktStockHandle:
         # 处理日线数据       
         if speriod=="D":
             
-           mkquerysql = "select * from hstockquotationone where hq_code =" + securityID
-           
-           strsql = "and hq_date>="+sDate_Start +" and hq_date<=" +sDate_End + " and hq_time>="+sTime_Start  + " and hq_time<="+sTime_End 
+           mkquerysql = "select * from hstockquotationday_frights as hiq where hiq.hq_code " + securityID
+                      
+           strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
            mkquerysql = mkquerysql + strsql
            
@@ -624,19 +626,21 @@ class MktIndexHandle:
         if sTime_Start=='':
             sTime_Start = '00:00:00'
         
-        if sTime_End=='':
-            sTime_End = '15:00:00'
+        if sTime_End=='':        
+            if speriod=="D":                 
+               sTime_End = '00:00:00'
+            else:
+               sTime_End = '15:00:00'
             
         strstart = ' UNIX_TIMESTAMP(\''+sDate_Start +' ' + sTime_Start+'\')'
         
         strend = 'UNIX_TIMESTAMP(\''+sDate_End +' '+sTime_End+'\')'
         
-        securityID = '('+ securityID+')'
         
         # 处理1分钟数据       
         if speriod=="1M":
             
-           mkquerysql = "select * from hindexquotationone as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hindexquotationone as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -647,7 +651,7 @@ class MktIndexHandle:
         # 处理5分钟数据       
         if speriod=="5M":
             
-           mkquerysql = "select * from hindexquotationfive as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hindexquotationfive as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -656,7 +660,7 @@ class MktIndexHandle:
         # 处理15分钟数据       
         if speriod=="15M":
             
-           mkquerysql = "select * from hindexquotationfifteen as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hindexquotationfifteen as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -665,7 +669,7 @@ class MktIndexHandle:
         # 处理30分钟数据       
         if speriod=="30M":
             
-           mkquerysql = "select * from hstockquotationthirty as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hstockquotationthirty as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -676,7 +680,7 @@ class MktIndexHandle:
         # 处理60分钟数据       
         if speriod=="60M":
             
-           mkquerysql = "select * from hstockquotationsixty as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hstockquotationsixty as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -686,7 +690,7 @@ class MktIndexHandle:
         # 处理日线数据       
         if speriod=="D":
             
-           mkquerysql = "select * from hindexquotationday as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hindexquotationday as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -711,19 +715,21 @@ class MktIndexHandle:
         if sTime_Start=='':
             sTime_Start = '00:00:00'
         
-        if sTime_End=='':
-            sTime_End = '15:00:00'
+        if sTime_End=='':        
+            if speriod=="D":                 
+               sTime_End = '00:00:00'
+            else:
+               sTime_End = '15:00:00'
             
         strstart = ' UNIX_TIMESTAMP(\''+sDate_Start +' ' + sTime_Start+'\')'
         
         strend = 'UNIX_TIMESTAMP(\''+sDate_End +' '+sTime_End+'\')'
         
-        securityID = '('+ securityID+')'
         
         # 处理1分钟数据       
         if speriod=="1M":
             
-           mkquerysql = "select * from hscaleindexquotationone as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hscaleindexquotationone as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -734,7 +740,7 @@ class MktIndexHandle:
         # 处理5分钟数据       
         if speriod=="5M":
             
-           mkquerysql = "select * from hscaleindexquotationfive as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hscaleindexquotationfive as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -743,7 +749,7 @@ class MktIndexHandle:
         # 处理15分钟数据       
         if speriod=="15M":
             
-           mkquerysql = "select * from hscaleindexquotationfifteen as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hscaleindexquotationfifteen as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -752,7 +758,7 @@ class MktIndexHandle:
         # 处理30分钟数据       
         if speriod=="30M":
             
-           mkquerysql = "select * from hscaleindexquotationthirty as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hscaleindexquotationthirty as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -763,7 +769,7 @@ class MktIndexHandle:
         # 处理60分钟数据       
         if speriod=="60M":
             
-           mkquerysql = "select * from hscaleindexquotationsixty as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hscaleindexquotationsixty as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
@@ -773,7 +779,7 @@ class MktIndexHandle:
         # 处理日线数据       
         if speriod=="D":
             
-           mkquerysql = "select * from hscaleindexquotationday as hiq where hiq.hq_code in " + securityID
+           mkquerysql = "select * from hscaleindexquotationday as hiq where hiq.hq_code " + securityID
                       
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
