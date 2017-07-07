@@ -303,38 +303,21 @@ class PlotToExcel():
         return mktdf
         
     #获取涨跌幅
-    def getIndexChg(self,idf):
+    def getIndexOrStockChg(self,idf):
         
-        idf_item   = idf.head(1)
+        if len(idf)>1:
+            
+            idf_item   = idf.head(1)
+            
+            idf_tmp    = idf_item['hq_close'].values
+            
+            idf_close  = idf_tmp[0]
         
-        idf_tmp    = idf_item['hq_close'].values
-        
-        idf_close  = idf_tmp[0]
-    
-        idf['hq_preclose'] = idf['hq_close'].shift(1)
-        
-        idf['hq_chg']= ((idf['hq_close']/idf['hq_preclose'] -1)*100).round(2)
-        
-        idf['hq_allchg']= ((idf['hq_close']/idf_close -1)*100).round(2)
-        
-        idf_ret = idf
-        
-        return idf_ret
-        
-        
-    def getStockChg(self,idf):
-        
-        idf_item   = idf.head(1)
-        
-        idf_tmp    = idf_item['hq_close'].values
-        
-        idf_close  = idf_tmp[0]
-    
-        idf['hq_preclose'] = idf['hq_close'].shift(1)
-        
-        idf['hq_chg']= ((idf['hq_close']/idf['hq_preclose'] -1)*100).round(2)
-        
-        idf['hq_allchg']= ((idf['hq_close']/idf_close -1)*100).round(2)
+            idf['hq_preclose'] = idf['hq_close'].shift(1)
+            
+            idf['hq_chg']= ((idf['hq_close']/idf['hq_preclose'] -1)*100).round(2)
+            
+            idf['hq_allchg']= ((idf['hq_close']/idf_close -1)*100).round(2)
         
         idf_ret = idf
         
@@ -347,10 +330,6 @@ class PlotToExcel():
         xdidf_ret = pd.DataFrame()
         
         dict_ret  ={}    
-        
-        
-        
-        
         
         
     #获取指数相对强弱，相对量能
@@ -380,13 +359,13 @@ class PlotToExcel():
 #            stockdf_group = stockdf.groupby('hq_code')
 #                        
 #            #生成指数dict        
-#            hkidf_dict = dict(list(hkidf_group))
+            hkidf_dict = dict(list(hkidf_group))
 #            
 #            #生成股票dict            
 #            stockdf_dict = dict(list(stockdf_group))
 #                                              
             #生成基准指数累计涨跌幅度
-            xdhidf   = self.getIndexChg(bmidf)
+            xdhidf   = self.getIndexOrStockChg(bmidf)
             
             bmi_len   = len(bmidf)
             
@@ -395,9 +374,17 @@ class PlotToExcel():
             dictcount = 0 
             
             sortdict = {}
+            
+            bkStockdict ={}            
+            
+            stockdict ={}
     
             #取出排名指数
             for dfdict in  hkidf_dict:
+                
+                print dfdict
+                
+                stockdict ={}             
                 
                 dictcount  = dictcount +1
                 
@@ -412,20 +399,43 @@ class PlotToExcel():
                    #取出行业关联的股票                                                        
                    bkstock_df = bkidf_dict[unicode(hidf_name)]
                    
-                   bksdf_len  = len(bkstock_df)
-                   
-                   for row in range(0,bksdf_len):   
-                   #for col in range(left,len(fields)+left):  
-                  
-                      tmplist  = bkstock_df[row:row+1].values.tolist()
-                                              
-                      k = 1 
+                   tmpbklist  = bkstock_df.values.tolist()
+                                      
+                   for bkl in tmpbklist:   
+                       
+                      if len(bkl)==4:
+                          
+                          tmp_bkcode = bkl[0]
+                          
+                          tmp_bkname = bkl[1]
+                          
+                          tmp_stockcode = bkl[2]
+                          
+                          tmp_stockname = bkl[3]
+                          
+                          tmp_stockdf = stockdf[stockdf.hq_code==tmp_stockcode]
+                          
+                          stockdf_ret = self.getIndexOrStockChg(tmp_stockdf)
+                       
+                          if len(stockdf_ret)>0:
+                              stockdict[tmp_stockcode] = stockdf_ret
+                              
+                    
+                   test    = len(stockdict)
+                    
+                   #板块字典中嵌套 股票字典 
+                   if len(stockdict)>0:    
+                       
+                       
+                       
+                       bkStockdict[dfdict]= stockdict
+                       
                    
                 
                 
                 tmpidf     = xdhidf.copy()
                 
-                hidf_ret   = self.getIndexChg(hidf_item)
+                hidf_ret   = self.getIndexOrStockChg(hidf_item)
                 
                 hidf_len   = len(hidf_item)
                 
