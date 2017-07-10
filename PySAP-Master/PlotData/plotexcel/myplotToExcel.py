@@ -322,15 +322,31 @@ class PlotToExcel():
         idf_ret = idf
         
         return idf_ret
+    
         
         
-    def getIStockXdQr(self,bmidf,hidf,bkdict,stockdf):
+    def getAllIndexOrStockChg(self,istockdf):
         
         
         xdidf_ret = pd.DataFrame()
         
-        dict_ret  ={}    
-        
+        if len(istockdf)>1:
+                        
+           idf_group  = istockdf.groupby('hq_code')
+           
+           idf_dict   = dict(list(idf_group))
+           
+           for idict in idf_dict:
+               
+               dictItem = idf_dict[idict]
+                
+               idf_ret  = self.getIndexOrStockChg(dictItem)
+           
+               xdidf_ret.append(idf_ret)
+               
+               print idict
+               
+        return xdidf_ret
         
     #获取指数相对强弱，相对量能
     def getIndexXdQr(self,bmidf,bkidf,bkdict,bkxfdf,stockdf):
@@ -339,13 +355,14 @@ class PlotToExcel():
         
         dict_ret  ={}    
         
-        
+        Mstockdf = pd.merge(stockdf,bkxfdf,left_on='hq_code',right_on='stock_id')
         #对板块个股进行分类
                 
-        bkidf_group = bkxfdf.groupby('board_name')
+        Mistockdf_group = Mstockdf.groupby('board_id')
+        
                 
         #板块个股关联        
-        bkidf_dict = dict(list(bkidf_group))
+        bkidf_dict = dict(list(Mistockdf_group))
         
         #如果板块有数据，计算处理
         
@@ -394,14 +411,22 @@ class PlotToExcel():
                 #找到指数对应股票的行情数据
                 if bkdict.has_key(dfdict):             
                    
-                   hidf_name  = bkdict[dfdict]
-                   
                    #取出行业关联的股票                                                        
-                   bkstock_df = bkidf_dict[unicode(hidf_name)]
-                   
-                   tmpbklist  = bkstock_df.values.tolist()
+                   bkstock_df = bkidf_dict[str(dfdict)]
                                       
-                   for bkl in tmpbklist:   
+                   tmpdf = bkstock_df[['hq_code','hq_close']]
+                   
+                   tmpbkgroup  = tmpdf.groupby('hq_code')
+                   
+                   tmpbkdict   = dict(list(tmpbkgroup))
+                   
+                   print tmpbkdict
+                                      
+                   for tdict in tmpbkdict:  
+                       
+                      tmpdf_item  = tmpbkdict[tdict]
+                      
+                      
                        
                       if len(bkl)==4:
                           
@@ -425,9 +450,7 @@ class PlotToExcel():
                     
                    #板块字典中嵌套 股票字典 
                    if len(stockdict)>0:    
-                       
-                       
-                       
+                                                                   
                        bkStockdict[dfdict]= stockdict
                        
                    
@@ -1197,6 +1220,42 @@ class PlotToExcel():
         
         #获取股票排名数据 
         stockdf  =  self.getPlotStockData(startDate,endDate,KlineType)
+        
+        def zhouqi(idf):
+            
+            
+         
+            try:
+                idf_item   = idf.head(1)
+                
+                idf_tmp    = idf_item['hq_close'].values
+                
+                idf_close  = idf_tmp[0]
+            
+                idf['hq_preclose'] = idf['hq_close'].shift(1)
+                
+                idf['hq_chg']= ((idf['hq_close']/idf['hq_preclose'] -1)*100).round(2)
+                
+                idf['hq_allchg']= ((idf['hq_close']/idf_close -1)*100).round(2)
+            
+                idf_ret = idf
+                
+                
+                print idf
+                
+                
+                return idf_ret
+                
+                
+            except Exception as e:
+                print e       
+               
+        test_stock = stockdf.groupby('hq_code').apply(zhouqi)
+        
+        
+        
+        
+        test     =  self.getAllIndexOrStockChg(stockdf)
         
         indexType = 'ScaleIndex'
         
