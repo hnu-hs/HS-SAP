@@ -642,16 +642,21 @@ class PlotToExcel():
     def bulidExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top,bkStockdict,xdsColumns):      
            
         #取出排名指数,写入到excel文件中
-           
-        sdata_left   = data_left
+        sdata_left   = data_left + len(xdiColumns)+2
+        
+        sdata_top    = data_top
                 
         #股票指数 坐标轴字典
-        sdataXY_dict = {}
+        sdataXY_list = []
+        
+        bkdataXY_dict ={}
                           
         if len(bkidf_list)>0:
             lastfile = bkidf_list[-1]
            
         for dflist in  bkidf_list:
+            
+           sdataXY_list = []
             
            if len(dflist)==2:
                
@@ -702,13 +707,10 @@ class PlotToExcel():
                    
                    
                    for bksdict in bkStockdict:
-                       
-                                              
-                       
-                       
-                       tmpTuple = ()
+                      
+                       tmpdatalist = [bksdict,sdata_top,sdata_left]
                                           
-                       IData_Sheet.write_row(data_top, sdata_left,xdsColumns)
+                       IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
                        
                        stockitem = bkStockdict[bksdict]
                        
@@ -721,12 +723,16 @@ class PlotToExcel():
                                                       
                           datalist = tmplist[0]
                                                           
-                          IData_Sheet.write_row(data_top+row+1, data_left,datalist)
+                          IData_Sheet.write_row(sdata_top+srow+1, sdata_left,datalist)
                                
-                          
+                       sdata_top  =    sdata_top +   stocklen +2
+                       
+                       sdataXY_list.append(tmpdatalist)
+                       
                    
-                   
+                   sdata_left = sdata_left + len(xdsColumns) + 1 
                
+               bkdataXY_dict[bkidf_code] = sdataXY_list
                
                idxstr  = u'指数数据'
                
@@ -779,7 +785,7 @@ class PlotToExcel():
         
         pic_lef+=len(xdiColumns) +2   
         
-        return wbk,pic_lef
+        return wbk,pic_lef,bkdataXY_dict
         
         
     def bulidAllExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top):      
@@ -1018,7 +1024,7 @@ class PlotToExcel():
             
             bkidf_list= list(xdhead_group)
                         
-            (wbk,pic_left)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
+            (wbk,pic_left,bkdataXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
             
             data_left = data_left+xdiColumnlens+2
             
@@ -1030,7 +1036,7 @@ class PlotToExcel():
             #生成dict        
             bkidf_list = list(xdtail_group)
             
-            (wbk,pic_left)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
+            (wbk,pic_left,bkdataXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
                
         wbk.close()
         
