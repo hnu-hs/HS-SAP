@@ -645,21 +645,30 @@ class PlotToExcel():
         sdata_left   = data_left + len(xdiColumns)+2
         
         sdata_top    = data_top
-                
+        
+        #汇总板块名称
+        bknamelist = []                
+
         #股票指数 坐标轴字典
         sdataXY_list = []
         
         bkdataXY_dict ={}
+        
+        bkcount  = 0 
                           
         if len(bkidf_list)>0:
             lastfile = bkidf_list[-1]
            
         for dflist in  bkidf_list:
-            
+           
+           print dflist[0]
+           
            sdataXY_list = []
+                      
+           bkcount += 1
             
            if len(dflist)==2:
-               
+                              
                bkidf_code  = dflist[0]
                
                bkidf_item  = dflist[1]
@@ -703,18 +712,19 @@ class PlotToExcel():
                    bkStockGroup = bkStockItem.groupby('stock_id')
                    
                    #生成股票dict
-                   bkStockdict  = dict(list(bkStockGroup))
+                   tStockdict  = dict(list(bkStockGroup))
                    
                    
-                   for bksdict in bkStockdict:
+                   for bksdict in tStockdict:
                       
-                       tmpdatalist = [bksdict,sdata_top,sdata_left]
-                                          
-                       IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
                        
-                       stockitem = bkStockdict[bksdict]
+                       stockitem = tStockdict[bksdict]
                        
                        stocklen  = len(stockitem)
+                       
+                       tmpdatalist = [bksdict,sdata_top,sdata_left,stocklen]
+                                          
+                       IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
                        
                        for srow in range(0,stocklen):   
                           #for col in range(left,len(fields)+left):  
@@ -725,14 +735,16 @@ class PlotToExcel():
                                                           
                           IData_Sheet.write_row(sdata_top+srow+1, sdata_left,datalist)
                                
-                       sdata_top  =    sdata_top +   stocklen +2
                        
                        sdataXY_list.append(tmpdatalist)
                        
+                       sdata_top  =    sdata_top +   stocklen +2
                    
                    sdata_left = sdata_left + len(xdsColumns) + 1 
                
                bkdataXY_dict[bkidf_code] = sdataXY_list
+               
+               sdata_top = 0
                
                idxstr  = u'指数数据'
                
@@ -781,9 +793,42 @@ class PlotToExcel():
                
                if lastfile!=dflist: 
                    pic_lef-=len(xdiColumns) +2
+           
+               #此处开始处理excel分类显示指数组，每N个指数一起显示
+                         
+               bkNum = 4
                
+               test = bkcount % bkNum
+               
+               
+               #如果不为0，加入名称           
+               if bkcount % bkNum !=0:
+                   
+                  bkpos  = bkname.find('-')
+                  
+                  if bkpos!=-1:
+                      
+                      tmpname = bkname[bkpos:]
+                   
+                      bknamelist.append(tmpname)
+                  else:
+                      
+                      bknamelist.append(bkname)             
+                  
+               
+               if bkcount % bkNum ==0 :
+                   
+                   bknames   = ','.join(bknamelist)
+                   
+                   bknames   ='(' + bknames +')'
+                   
+                   bknamelist = []
+                              
         
-        pic_lef+=len(xdiColumns) +2   
+        pic_lef+=len(xdiColumns) +2
+        
+        
+        m =1 
         
         return wbk,pic_lef,bkdataXY_dict
         
@@ -898,7 +943,10 @@ class PlotToExcel():
     def bulidIndexDataToExcel(self,bmi_list,IData_Sheet,bmiColumns,left,top):
         
         #写入指数数据头
-        IData_Sheet.write_row(top, left,bmiColumns)
+        idataXY_list = []
+        
+        idataXY_dict ={}
+        
                 
         for dflist in  bmi_list:
             
@@ -909,6 +957,8 @@ class PlotToExcel():
                bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
                
                bkidf_len   = len(bkidf_item)
+               
+              # tmpdatalist = [bksdict,sdata_top,sdata_left,stocklen]
                
                #写入头
                IData_Sheet.write_row(top, left,bmiColumns)
@@ -927,7 +977,7 @@ class PlotToExcel():
         return  IData_Sheet  
         
     #构建指数excel构架    
-    def bulidIndexExcelFrame(self,bmidf,xdhead_idf,xdtail_idf,bkStockdict):
+    def bulidIndexExcelFrame(self,bmidf,xdhead_idf,bkStockdict):
                 
         data_left = 0    #数据起始列
         
@@ -1027,17 +1077,17 @@ class PlotToExcel():
             (wbk,pic_left,bkdataXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
             
             data_left = data_left+xdiColumnlens+2
-            
-                
-        if len(xdtail_idf)>0:            
-                       
-            #数据分组        
-            xdtail_group = xdtail_idf.groupby('hq_code',sort=False)                                           
-            #生成dict        
-            bkidf_list = list(xdtail_group)
-            
-            (wbk,pic_left,bkdataXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
-               
+#            
+#                
+#        if len(xdtail_idf)>0:            
+#                       
+#            #数据分组        
+#            xdtail_group = xdtail_idf.groupby('hq_code',sort=False)                                           
+#            #生成dict        
+#            bkidf_list = list(xdtail_group)
+#            
+#            (wbk,pic_left,bkdataXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
+#               
         wbk.close()
         
      
@@ -1131,7 +1181,7 @@ class PlotToExcel():
             
             tmpdata = bmidf[1:]
             
-#            retdata = tmpdata[['hq_code','hq_date','hq_close','hq_preclose','hq_vol','hq_chg','hq_allchg']]
+#           retdata = tmpdata[['hq_code','hq_date','hq_close','hq_preclose','hq_vol','hq_chg','hq_allchg']]
 #             
             rethead   = bmidf['hq_code']
 #            
@@ -1287,7 +1337,7 @@ class PlotToExcel():
         (xdtmp_idf,xdhead_idf,xdtail_idf) =self.getSortedIndexdf(xd_idf,sortlist,rankingnum)
         
         #画出指数排名图形
-        self.bulidIndexExcelFrame(ebmidf,xdhead_idf,xdtail_idf,bkStockdict)
+        self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict)
                 
         #画出指数排名图形（所有图形）
         self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf)
