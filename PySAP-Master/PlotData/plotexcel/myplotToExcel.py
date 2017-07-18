@@ -509,7 +509,7 @@ class PlotToExcel():
         return xdidf_ret,dict_ret,bkStockdict
         
     
-    def bulidChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,style):
+    def bulidChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len2,shift2,style):
         
         bk_chart = wbk.add_chart({'type': 'line'})
                
@@ -529,15 +529,16 @@ class PlotToExcel():
             
             bk_chart.add_series({
              'name':[idxstr, data_top2+1, data_left2+1],
-             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
-             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
+             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
+             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
              'line':{'color':'blue'},  
                       
              })
-        else: 
              
+        if style==2:     
+                 
              bk_chart.add_series({
-             'name':[idxstr, data_top, data_left+shift-1],
+             'name':[idxstr, data_top, data_left+shift],
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
              'line':{'color':'FF6347'},
@@ -545,12 +546,32 @@ class PlotToExcel():
              }) 
                           
              bk_chart.add_series({
-             'name':[idxstr, data_top2, data_left2+shift2-1],
-             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
-             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
+             'name':[idxstr, data_top2, data_left2+shift2],
+             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
+             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
              'line':{'color':'708090'},  
                        
              })
+                 
+        if style==3:
+            
+            bk_chart.add_series({
+             'name':[idxstr, data_top+1, data_left+1],
+             'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
+             'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
+             'line':{'color':'red'},
+             'y2_axis': True, 
+                    
+             })            
+            
+            bk_chart.add_series({
+             'name':[idxstr, data_top2+1, data_left2+3],
+             'categories':[idxstr, data_top2+1, data_left2+4, data_top2+bkidf_len2, data_left2+4],
+             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
+             'line':{'color':'yellow'},  
+                      
+             })   
+             
         #bold = wbk.add_format({'bold': 1})
      
      
@@ -647,12 +668,18 @@ class PlotToExcel():
         sdata_top    = data_top
         
         #汇总板块名称
-        bknamelist = []                
+        bknamelist = []    
+                    
+        bkcodelist = []    
+        
+        bkdict ={}
 
         #股票指数 坐标轴字典
         sdataXY_list = []
         
         bkdataXY_dict ={}
+        
+        bkXY_dict={}
         
         bkcount  = 0 
                           
@@ -687,6 +714,11 @@ class PlotToExcel():
                
                bkidf_len   = len(bkidf_item)
                
+               
+               
+               tmpbkist = [bkidf_code,data_top,data_left,bkidf_len]
+               
+               bkXY_dict[bkidf_code] = tmpbkist
                #写入头
                IData_Sheet.write_row(data_top, data_left,xdiColumns)
                
@@ -713,12 +745,12 @@ class PlotToExcel():
                    
                    #生成股票dict
                    tStockdict  = dict(list(bkStockGroup))
-                   
-                   
-                   for bksdict in tStockdict:
-                      
+                                      
+                   for bksdict in tStockdict: 
                        
                        stockitem = tStockdict[bksdict]
+                       
+                       stockitem['hq_date'] = stockitem['hq_date'].astype(str)
                        
                        stocklen  = len(stockitem)
                        
@@ -759,7 +791,7 @@ class PlotToExcel():
                
                style   = 1
                
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,style)
+               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style)
                     
                #画出双轴对比图
                
@@ -780,7 +812,7 @@ class PlotToExcel():
                
                style   = 2
                
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,style)
+               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style)
                     
                #画出双轴对比图
                
@@ -798,23 +830,23 @@ class PlotToExcel():
                          
                bkNum = 4
                
-               test = bkcount % bkNum
-               
-               
-               #如果不为0，加入名称           
-               if bkcount % bkNum !=0:
-                   
-                  bkpos  = bkname.find('-')
+               bkpos  = bkname.find('-')
+              
+               if bkpos!=-1:
                   
-                  if bkpos!=-1:
-                      
-                      tmpname = bkname[bkpos:]
-                   
-                      bknamelist.append(tmpname)
-                  else:
-                      
-                      bknamelist.append(bkname)             
+                  tmpname = bkname[bkpos+1:]
+               
+                  bknamelist.append(tmpname)
                   
+                  bkcodelist.append(dflist[0])
+                  
+                  bkdict[dflist[0]] = bkname
+                  
+               else:
+                  
+                  bknamelist.append(bkname)     
+               
+               #如果不为0，加入名称       
                
                if bkcount % bkNum ==0 :
                    
@@ -823,14 +855,152 @@ class PlotToExcel():
                    bknames   ='(' + bknames +')'
                    
                    bknamelist = []
-                              
-        
-        pic_lef+=len(xdiColumns) +2
+                   
+                   tmp_Sheet = wbk.add_worksheet(bknames)
+                  
+                   idxstr  = u'指数数据'
+                                       
+                   #指数参数设置
+                   shift =10
+                   
+                   bkdata_top = 0
+                   
+                   bkdata_top2 = 0
+                                      
+                   bkdata_left = data_left
+                   
+                   bkdata_left2 = 0
+                                      
+                   shift2  = 3
+                   
+                   style   = 1
+                   
+                   pic_top = 1
+                   
+                   pic_lef = 1
+                   
+                   #先画指数，后画股票                                        
+                   for bkcl in bkcodelist:
+                       
+                       if bkXY_dict.has_key(bkcl):
+                           
+                           pic_top = 1
+                           
+                           #取出板块指数                             
+                           bkitem  = bkXY_dict[bkcl]
+                           
+                           #获取X坐标                           
+                           bkdata_top = bkitem[1]
+                           
+                           #获取Y坐标
+                           bkdata_left = bkitem[2]
+                           
+                           #获取数据长度
+                           bkdata_len  = bkitem[3]
+                           
+                           bkdata_top2 = 0
+                           
+                           bktiles = bkdict[bkcl]
+                           
+                           shift =10
+                           
+                           style   = 1
+                                
+                           shift2  = 3
+                           
+                           bkdata_left2 = 0 
+                                                                              
+                           bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style)
+                           
+                           #画出双轴对比图
+                                                      
+                           tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                            #bg+=19       
+                           
+                           pic_top+=15
+                           
+                           #画成交量与成交金额相对相对量比
+                           
+                           shift =11
+                           
+                           bkdata_top2 = bkdata_top
+                           
+                           bkdata_left2 = data_left
+                           
+                           shift2  = 12
+                           
+                           style   = 2
+                                                                              
+                           bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style)
+                                
+                           #画出双轴对比图
+                           
+                           tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                           
+                           
+                           pic_top+=15
+                                                  
+                           #pic_lef += len(xdiColumns)+2
+                           
+                           #获取指数中的股票
+                           if bkdataXY_dict.has_key(bkcl):
+                               
+                               bkdataItem = bkdataXY_dict[bkcl]
+                               
+                               for bksl in bkdataItem:
+                                   
+                                   if len(bksl)==4:              
+                                      #获取股票代码 
+                                      bkstockcode  = bksl[0] 
+                                      
+                                      #获取股票X坐标
+                                      bkstock_X    = bksl[1] 
+                                
+                                      #获取股票Y坐标
+                                      bkstock_Y    = bksl[2]
+                                      
+                                      #获取股票长度
+                                      bkstock_len  = bksl[3]                                      
+                                
+                                      bktiles = str(bkstockcode)
+                                       
+                                      shift =10
+                                       
+                                      style   = 3
+                                            
+                                      shift2  = 10
+                                       
+                                      bkdata_left2 = 0 
+                                      
+                                      bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style)
+                                                                 
+                                      tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                                      
+                                      pic_top+=15
+                                                                            
+                                      #画成交量与成交金额相对相对量比
+                                      shift =11
+                                       
+                                      style   = 2
+                                            
+                                      shift2  = 11
+                                                                                          
+                                      bk_chart = self.bulidChart(wbk,bkstock_X,bkstock_Y,bkstock_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style)
+                                            
+                                      #画出双轴对比图
+                                       
+                                      tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                                        
+                                      pic_top+=15
+                                      
+                           pic_lef += len(xdiColumns)+2                                      
+                   
+                   bkcodelist = []                                  
         
         
         m =1 
         
-        return wbk,pic_lef,bkdataXY_dict
+        return wbk,pic_lef,bkdataXY_dict,bkXY_dict
         
         
     def bulidAllExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top):      
@@ -943,7 +1113,6 @@ class PlotToExcel():
     def bulidIndexDataToExcel(self,bmi_list,IData_Sheet,bmiColumns,left,top):
         
         #写入指数数据头
-        idataXY_list = []
         
         idataXY_dict ={}
         
@@ -951,6 +1120,8 @@ class PlotToExcel():
         for dflist in  bmi_list:
             
            if len(dflist)==2:
+               
+               bkidf_code  = dflist[0]
                                         
                bkidf_item  = dflist[1]
                
@@ -958,10 +1129,15 @@ class PlotToExcel():
                
                bkidf_len   = len(bkidf_item)
                
-              # tmpdatalist = [bksdict,sdata_top,sdata_left,stocklen]
+               tmpdatalist = [bkidf_code,top,left,bkidf_len]
+               
+               
+               idataXY_dict[bkidf_code] = tmpdatalist
                
                #写入头
                IData_Sheet.write_row(top, left,bmiColumns)
+               
+               #tmplist = []
                
                #写入内容
                    
@@ -973,8 +1149,10 @@ class PlotToExcel():
                   datalist = tmplist[0]
                                                   
                   IData_Sheet.write_row(top+row+1, left,datalist)
-        
-        return  IData_Sheet  
+               
+               top = top   + bkidf_len + 2
+               
+        return  IData_Sheet,idataXY_dict
         
     #构建指数excel构架    
     def bulidIndexExcelFrame(self,bmidf,xdhead_idf,bkStockdict):
@@ -1061,7 +1239,7 @@ class PlotToExcel():
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
-            IData_Sheet = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
+            (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
             
             data_left = data_left +len(bmiColumns) +2
             
@@ -1074,7 +1252,7 @@ class PlotToExcel():
             
             bkidf_list= list(xdhead_group)
                         
-            (wbk,pic_left,bkdataXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
+            (wbk,pic_left,bkdataXY_dict,bkXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
             
             data_left = data_left+xdiColumnlens+2
 #            
