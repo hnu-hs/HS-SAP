@@ -490,7 +490,7 @@ class PlotToExcel():
                    
                    tmpstockdf = self.getAllStockChg(bkitem,bkidf_tmp)
                    
-                   bksrdf     = tmpstockdf[['board_id','board_name','stock_id','stock_name','hq_date','hq_close','hq_preclose','hq_vol','hq_amo','hq_chg','hq_xdallchg','hq_xdamo']]
+                   bksrdf     = tmpstockdf[['board_id','board_name','hq_date','stock_id','stock_name','hq_close','hq_preclose','hq_vol','hq_amo','hq_chg','hq_xdallchg','hq_xdamo']]
                     
                    bkStockdict[dfdict] = bksrdf
                    
@@ -565,8 +565,8 @@ class PlotToExcel():
              })            
             
             bk_chart.add_series({
-             'name':[idxstr, data_top2+1, data_left2+3],
-             'categories':[idxstr, data_top2+1, data_left2+4, data_top2+bkidf_len2, data_left2+4],
+             'name':[idxstr, data_top2+1, data_left2+4],
+             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
              'line':{'color':'yellow'},  
                       
@@ -753,8 +753,12 @@ class PlotToExcel():
                        stockitem['hq_date'] = stockitem['hq_date'].astype(str)
                        
                        stocklen  = len(stockitem)
+                                              
+                       snamelist = stockitem['stock_name'].tolist()
+                                              
+                       stockname =  snamelist[0]
                        
-                       tmpdatalist = [bksdict,sdata_top,sdata_left,stocklen]
+                       tmpdatalist = [bksdict,sdata_top,sdata_left,stocklen,stockname]
                                           
                        IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
                        
@@ -875,16 +879,16 @@ class PlotToExcel():
                    
                    style   = 1
                    
-                   pic_top = 1
+                   picbk_top = 1
                    
-                   pic_lef = 1
+                   picbk_lef = 1
                    
                    #先画指数，后画股票                                        
                    for bkcl in bkcodelist:
                        
                        if bkXY_dict.has_key(bkcl):
                            
-                           pic_top = 1
+                           picbk_top = 1
                            
                            #取出板块指数                             
                            bkitem  = bkXY_dict[bkcl]
@@ -914,10 +918,10 @@ class PlotToExcel():
                            
                            #画出双轴对比图
                                                       
-                           tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                           tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                             #bg+=19       
                            
-                           pic_top+=15
+                           picbk_top+=15
                            
                            #画成交量与成交金额相对相对量比
                            
@@ -935,12 +939,12 @@ class PlotToExcel():
                                 
                            #画出双轴对比图
                            
-                           tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                           tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                            
                            
-                           pic_top+=15
+                           picbk_top+=15
                                                   
-                           #pic_lef += len(xdiColumns)+2
+                           #picbk_lef += len(xdiColumns)+2
                            
                            #获取指数中的股票
                            if bkdataXY_dict.has_key(bkcl):
@@ -949,7 +953,7 @@ class PlotToExcel():
                                
                                for bksl in bkdataItem:
                                    
-                                   if len(bksl)==4:              
+                                   if len(bksl)==5:              
                                       #获取股票代码 
                                       bkstockcode  = bksl[0] 
                                       
@@ -960,9 +964,13 @@ class PlotToExcel():
                                       bkstock_Y    = bksl[2]
                                       
                                       #获取股票长度
-                                      bkstock_len  = bksl[3]                                      
+                                      bkstock_len  = bksl[3]
+                                      
+                                      bkstockname  = bksl[4]
+                                      
+                                      
                                 
-                                      bktiles = str(bkstockcode)
+                                      bktiles = str(bkstockcode)+'('+bkstockname+')'
                                        
                                       shift =10
                                        
@@ -974,9 +982,9 @@ class PlotToExcel():
                                       
                                       bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style)
                                                                  
-                                      tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                                      tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                                       
-                                      pic_top+=15
+                                      picbk_top+=15
                                                                             
                                       #画成交量与成交金额相对相对量比
                                       shift =11
@@ -989,11 +997,11 @@ class PlotToExcel():
                                             
                                       #画出双轴对比图
                                        
-                                      tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                                      tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                                         
-                                      pic_top+=15
+                                      picbk_top+=15
                                       
-                           pic_lef += len(xdiColumns)+2                                      
+                           picbk_lef += len(xdiColumns)+2                                      
                    
                    bkcodelist = []                                  
         
