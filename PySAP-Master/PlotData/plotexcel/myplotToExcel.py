@@ -571,7 +571,7 @@ class PlotToExcel():
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
              'line':{'color':'red'},
-             'y2_axis': True, 
+             
                     
              })            
             
@@ -579,7 +579,8 @@ class PlotToExcel():
              'name':[idxstr, data_top2+1, data_left2+4],
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
-             'line':{'color':'yellow'},  
+             'line':{'color':'black'}, 
+             'y2_axis': True,  
                       
              })   
              
@@ -768,7 +769,10 @@ class PlotToExcel():
                                       
                    for slist in stocklist: 
                        
-                       stockitem = tStockdict[slist]
+                                              
+                       scode     = slist[0]
+                       
+                       stockitem = tStockdict[scode]
                        
                        stockitem['hq_date'] = stockitem['hq_date'].astype(str)
                        
@@ -778,7 +782,7 @@ class PlotToExcel():
                                               
                        stockname =  snamelist[0]
                        
-                       tmpdatalist = [slist,sdata_top,sdata_left,stocklen,stockname]
+                       tmpdatalist = [scode,sdata_top,sdata_left,stocklen,stockname]
                                           
                        IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
                        
@@ -1548,6 +1552,8 @@ class PlotToExcel():
         #画出指数排名图形（所有图形）
         self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf)
         
+        kk =1 
+        
         
 if '__main__'==__name__:  
     
@@ -1575,7 +1581,7 @@ if '__main__'==__name__:
     
     start_date = datetime.strptime("2017-05-03", "%Y-%m-%d")
     
-    end_date = datetime.strptime("2017-06-30", "%Y-%m-%d")
+    end_date = datetime.strptime("2017-07-20", "%Y-%m-%d")
     
     #K线类型    
     KlineType ='D'
