@@ -612,24 +612,28 @@ class PlotToExcel():
     
      
     
-    def bulidALLChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,bkCount):
+    def bulidALLChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,bkCount,style):
         
         bk_chart = wbk.add_chart({'type': 'line'})
                
         bk_chart.set_style(4)
         
+        # CD6600 橙色，C1C1C1紫色，556B2F草绿色，696969灰色，
+        colorlist =['CD6600','0F0F0F','FF0000','556B2F','FFD700']
         
-    
+        
         #基准无需变动
         
-        bk_chart.add_series({
-         'name':[idxstr, data_top2+1, data_left2+1],
-         'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
-         'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
-         'line':{'color':'blue'},  
-                  
-         })             
-     
+        if style==1:
+            
+            bk_chart.add_series({
+             'name':[idxstr, data_top2+1, data_left2+1],
+             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
+             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
+             'line':{'color':'blue'},  
+                      
+             })             
+         
     
         #向图表添加数据 
         for icount in range(bkCount):
@@ -638,7 +642,7 @@ class PlotToExcel():
              'name':[idxstr, data_top+1, data_left+1],
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
-             'line':{'color':'red'},
+             'line':{'color':colorlist[icount]},
              'y2_axis': True, 
                     
              })                 
@@ -1061,7 +1065,16 @@ class PlotToExcel():
                
                bkname = bkname[0]
                
-               bktile = bkname +'('+bkidf_code+')'
+               bkpos  = bkname.find("-")
+               
+               bkname = bkname[bkpos+1:]
+               
+               if bkcount==1 :
+                  bktiles =  bkname
+               else:
+                   
+                  bktiles = bktiles + ',' +bkname
+              
                
                bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
                
@@ -1091,6 +1104,8 @@ class PlotToExcel():
                    #指数参数设置
                    shift =10
                    
+                   bktiles = '(' + bktiles +')' 
+                   
                    #第一次赋值为0 
                    if bkcount==5:
                        dstart_top = 0
@@ -1101,8 +1116,9 @@ class PlotToExcel():
                    
                    shift2  = 3
                    
+                   style   = 1
                    
-                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,5)
+                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktiles,idxstr,shift,data_top2,data_left2,shift2,5,style)
                         
                    #画出双轴对比图
                    
@@ -1120,8 +1136,10 @@ class PlotToExcel():
                    data_left2 = data_left
                    
                    shift2  = 12
+                   
+                   style  =2
                                       
-                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,5)
+                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktiles,idxstr,shift,data_top2,data_left2,shift2,5,style)
                         
                    #画出双轴对比图
                    
@@ -1134,7 +1152,8 @@ class PlotToExcel():
                    
                    if lastfile!=dflist: 
                        pic_lef-=len(xdiColumns) +2
-               
+                   
+                   bktiles =''
         
         pic_lef+=len(xdiColumns) +2   
         
@@ -1364,7 +1383,7 @@ class PlotToExcel():
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
-            IData_Sheet = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
+            (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
             
             data_left = data_left +len(bmiColumns) +2
         
