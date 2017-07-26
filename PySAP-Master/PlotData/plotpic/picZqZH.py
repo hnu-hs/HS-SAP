@@ -20,17 +20,24 @@ sys.setdefaultencoding('utf8')
 
 class picExcel():
     
-    def __init__(self,time,indexChg,stockChg,stock200Chg,indexTldx,sTLDX,sTLDX200,indexQ,sQ,sQ200):
+    def __init__(self,time,indexChg,stockChg,stock200Chg,stock30Chg,indexTldx,sTLDX,sTLDX200,sTLDX30,indexQ,sQ,sQ200,sQ30):
         self.filename=u'E:/工作/报表/综合/综合报表'+time+'.xlsx'
         self.indexChg=indexChg
         self.indexTldx=indexTldx
+        
         self.sTLDX=sTLDX
         self.sTLDX200=sTLDX200
+        self.sTLDX30=sTLDX30
+        
         self.stockChg=stockChg
         self.stock200Chg=stock200Chg
+        self.stock30Chg=stock30Chg
+        
         self.indexQ=indexQ
         self.sQ=sQ
         self.sQ200=sQ200
+        self.sQ30=sQ30
+        
         self.time=time
     
     
@@ -183,35 +190,45 @@ class picExcel():
         sheet2.merge_range(0,left,0,left+37,self.time,red)
    
         sheet2.merge_range(top,left,top,left+17,'股票涨幅排序',bigZF) 
-        sheet2.write_row(top+1,left+1,['市场排名','所有股票','涨幅','相对涨幅','','市场排名','200标的','涨幅','相对涨幅','','市场前200','涨幅','所属','','200标的','涨幅','所属'],white)            
+        sheet2.write_row(top+1,left+1,['市场排名','所有股票','涨幅','相对涨幅','','市场排名','200标的','涨幅','相对涨幅','','RF200','涨幅','所属','','RF30','涨幅','所属'],white)            
         sheet2.write(top+1,left,'板块',white)
         sheet2.write(top+1,left+5,'板块',white) 
    
         sheet2.merge_range(top,left+19,top,left+27,'特立独行',bigTLDX) 
-        sheet2.write_row(top+1,left+19,['板块','全市场','相关系数','板块','200标的','相关系数','','市场前10','标的前10'],white)  
-        sheet2.write_row(top+14,left+26,['市场后10','标的后10'],white)
+        sheet2.write_row(top+1,left+19,['板块','全市场','相关系数','板块','200标的','相关系数','','RF200','RF30'],white)  
+        #sheet2.write_row(top+14,left+26,['市场后10','标的后10'],white)
         
         sheet2.merge_range(top,left+29,top,left+37,'聪明钱',bigQ) 
-        sheet2.write_row(top+1,left+29,['板块','全市场','Q因子','板块','200标的','Q因子','','市场前10','标的前10'],white)  
-        sheet2.write_row(top+14,left+36,['市场后10','标的后10'],white)               
+        sheet2.write_row(top+1,left+29,['板块','全市场','Q因子','板块','200标的','Q因子','','RF200','RF30'],white)  
+        #sheet2.write_row(top+14,left+36,['市场后10','标的后10'],white)               
             
         #得到股票涨跌数据
         stockChg=self.stockChg
         #stockTop=stockChg.head(200)
         #stockTail=stockChg.tail(200)[::-1]
         stock200Chg=self.stock200Chg   
-        tldxTop=self.sTLDX.head(10)
-        tldxTail=self.sTLDX.tail(10)[::-1]
-        tldx200Top=self.sTLDX200.head(10)
-        tldx200Tail=self.sTLDX200.tail(10)[::-1]
-        QTop=self.sQ.head(10)
-        QTail=self.sQ.tail(10)[::-1]
-        Q200Top=self.sQ200.head(10)
-        Q200Tail=self.sQ200.tail(10)
+        
+        rflen=len(self.sTLDX30)
+        tldxTop=self.sTLDX200.head(rflen)      
+        #tldxTail=self.sTLDX.tail(10)[::-1]
+        tldx200Top=self.sTLDX30
+        #tldx200Tail=self.sTLDX200.tail(10)[::-1]
+        QTop=self.sQ200.head(rflen)
+       # QTail=self.sQ.tail(10)[::-1]
+        Q200Top=self.sQ30
+        #Q200Tail=self.sQ200.tail(10)
+        
+        
+        #把特立独行和Q因子前10数据导出到CSV
+        self.sTLDX200.to_csv(u'E:/工作/数据备份/tldx200/'+self.time+'.csv',encoding='gbk')
+        self.sQ200.to_csv(u'E:/工作/数据备份/Q200/'+self.time+'.csv',encoding='gbk')
+        tldx200Top.to_csv(u'E:/工作/数据备份/tldx30/'+self.time+'.csv',encoding='gbk')
+        Q200Top.to_csv(u'E:/工作/数据备份/Q30/'+self.time+'.csv',encoding='gbk')
+        self.sTLDX.to_csv(u'E:/工作/数据备份/tldx/'+self.time+'.csv',encoding='gbk')
+        self.sQ.to_csv(u'E:/工作/数据备份/Q/'+self.time+'.csv',encoding='gbk')
                   
         #分板块写股票排名  
         top=3
-
         for board in boardNames:
             data=stockChg[stockChg.board_name==board].head(10)
             dataLen=len(data)
@@ -243,9 +260,9 @@ class picExcel():
         
         #写股票前200全市场排名
         top=3
-        for i in xrange(len(stock200Chg)): 
+        for i in xrange(len(self.stock30Chg)): 
             try:
-                sheet2.write_row(top+i,left+11,[stockChg.iat[i,0],stockChg.iat[i,1],stockChg.iat[i,3],'',stock200Chg.iat[i,0],stock200Chg.iat[i,1],stock200Chg.iat[i,3]],PER)                                   
+                sheet2.write_row(top+i,left+11,[stock200Chg.iat[i,0],stock200Chg.iat[i,1],stock200Chg.iat[i,3],'',self.stock30Chg.iat[i,0],self.stock30Chg.iat[i,1],self.stock30Chg.iat[i,3]],PER)                                   
             except:
                 print stockChg.iat[i,1]  
         
@@ -284,7 +301,7 @@ class picExcel():
         for i in xrange(len(tldxTop)): 
             try:
                 sheet2.write_row(top+i,left+26,[tldxTop.iat[i,2],tldx200Top.iat[i,2]],TLDX)   
-                sheet2.write_row(top+i+13,left+26,[tldxTail.iat[i,2],tldx200Tail.iat[i,2]],TLDX)                                
+                #sheet2.write_row(top+i+13,left+26,[tldxTail.iat[i,2],tldx200Tail.iat[i,2]],TLDX)                                
             except:
                 print tldxTop.iat[i,2]  
 
@@ -324,7 +341,7 @@ class picExcel():
         for i in xrange(len(QTop)): 
             try:
                 sheet2.write_row(top+i,left+36,[QTop.iat[i,2],Q200Top.iat[i,2]],ZW) 
-                sheet2.write_row(top+i+13,left+36,[QTail.iat[i,2],Q200Tail.iat[i,2]],ZW)                                
+                #sheet2.write_row(top+i+13,left+36,[QTail.iat[i,2],Q200Tail.iat[i,2]],ZW)                                
             except:
                 print QTop.iat[i,0]  
                 

@@ -12,8 +12,9 @@ import pandas as pd
 import numpy as np
 import os
 import time
+
 from sqlalchemy import create_engine
-from PlotData.plotexcel import plotToExcel
+
 import colligation# import ZH
 import glob
 import xlsxwriter
@@ -23,7 +24,8 @@ sys.setdefaultencoding('utf-8')
 
 class ZJ():
     def __init__(self):
-        self.dir=u'E:\\工作\\tick\\'
+        self.dir=u'F:\\HS-SAP\\PySAP-Master\\Data\\History\\Stock\\股票tick数据\\'
+        
         self.engine=create_engine('mysql://root:lzg000@127.0.0.1/stocksystem?charset=utf8')
         #储存每日资金流的CSV文件目录
         self.datadir=u"E:/工作/数据备份/资金流/*.csv"      
@@ -37,6 +39,7 @@ class ZJ():
         sindex=fdirlist.index(sdate)
         eindex=fdirlist.index(edate)
         fdirlist=fdirlist[sindex:eindex+1]  
+        
         for fdir in fdirlist:
             date=fdir
             fdir=os.path.join(self.dir,fdir)    
@@ -176,7 +179,7 @@ class ZJ():
 #                s1['type']=pd.concat([sg['type'],xj['type']])
 #                s1.sort_index(inplace=True)
 #                s1.fillna(0,inplace=True) 
-
+                m =1 
     
     
     #按成交额大小排序
@@ -421,7 +424,9 @@ if __name__=='__main__':
     #z.indexBigCashflow('2017-07-14 00:00','2017-07-14 15:00')
     
     
-    z.tickTradeType('20170717','20170721')
+    z.tickTradeType('20170717','20170721',1)
+    
+    k =1
     #z.indexBigCashflow('2017-07-19 00:00','2017-07-19 15:00')
     #z.zqAllAmo('20170710','20170718')
     #z.tickCountDay('20170719','20170719')

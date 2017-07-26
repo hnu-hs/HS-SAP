@@ -166,6 +166,8 @@ class TmpDealData():
                     fdataflag = False
                                                             
                     #使用pandas格式读取数据
+                                                            
+                    print fname
                                                         
                     if klinetype=="Day":
                                                 
@@ -1582,7 +1584,7 @@ if '__main__'==__name__:
     
     dataFlag  = False
      
-    #dataFlag  = True
+    dataFlag  = True
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         tdd.getAllTypeDir()
