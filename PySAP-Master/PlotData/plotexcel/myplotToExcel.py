@@ -8,6 +8,7 @@ Created on Wed Jun 07 12:09:46 2017
 from sqlalchemy import create_engine 
 import xlsxwriter
 import os
+import gc
 
 import pandas as pd
 import numpy as np
@@ -346,7 +347,9 @@ class PlotToExcel():
                 
                    idf_ret  = self.getIndexOrStockChg(dictItem)
                    
-                   idf_ret  = pd.merge(idf_ret,bkidf_tmp,left_on='hq_date',right_on='bhq_date')
+                   
+                   
+                   idf_ret  = pd.merge(idf_ret,bkidf_tmp,left_on='index',right_on='index')
 #                   
 #                   print idf_ret
                    
@@ -363,7 +366,6 @@ class PlotToExcel():
                    
                    stockChgDict[idict] =  stockChgList.pop()
                                       
-                   
                
         return xdidf_ret,stockChgDict
         
@@ -372,9 +374,13 @@ class PlotToExcel():
         
         xdidf_ret = pd.DataFrame()
         
-        dict_ret  ={}    
+        dict_ret  ={}  
+        
+        stockdf_len = len(stockdf)
         
         Mstockdf = pd.merge(stockdf,bkxfdf,left_on='hq_code',right_on='stock_id')
+        
+        stockdf  = pd.DataFrame()
         #对板块个股进行分类
                 
         Mistockdf_group = Mstockdf.groupby('board_id')
@@ -383,9 +389,13 @@ class PlotToExcel():
         #板块个股关联        
         bkidf_dict = dict(list(Mistockdf_group))
         
+        Mstockdf  = pd.DataFrame()
+        
+        gc.collect()
+        
         #如果板块有数据，计算处理
         
-        if len(bkidf)>0 and len(bmidf)>0 and len(stockdf)>0 :
+        if len(bkidf)>0 and len(bmidf)>0 and stockdf_len>0 :
             
             
             #指数数据分组        
@@ -492,7 +502,11 @@ class PlotToExcel():
                 
                 bkidf_tmp =  tmpdf[['hq_code','hq_date','hq_chg','hq_allchg','hq_vol','hq_amo']]
                 
+                
+                
                 bkidf_tmp.rename(columns={'hq_code': 'bhq_code', 'hq_date': 'bhq_date', 'hq_chg': 'bhq_chg', 'hq_allchg': 'bhq_allchg', 'hq_vol': 'bhq_vol', 'hq_amo': 'bhq_amo'}, inplace=True) 
+                
+                bkidf_tmp['index'] = bkidf_tmp.index
                 
                 #找到指数对应股票的行情数据
                 if bkidf_dict.has_key(str(dfdict)):
@@ -506,6 +520,8 @@ class PlotToExcel():
                    bkStockdict[dfdict] = bksrdf
                    
                    bkStockChgdict[dfdict] = stockChgDict
+                 
+                   gc.collect()
                    
                    m = 1
                 
@@ -514,7 +530,7 @@ class PlotToExcel():
             xdhead_idf = pd.DataFrame(xdhead_array,columns=xdhead_columnus)
             
             if 'hq_xdamo' in xdhead_columnus:
-                xdidf_ret  = xdhead_idf[['hq_code','hq_name','hq_date','hq_bmcode','hq_bmname','hq_close','hq_preclose','hq_vol','hq_amo','hq_chg','hq_allchg','hq_xdvol','hq_xdamo']]
+                xdidf_ret  = xdhead_idf[['hq_code','hq_name','hq_date','hq_time','hq_bmcode','hq_bmname','hq_close','hq_preclose','hq_vol','hq_amo','hq_chg','hq_allchg','hq_xdvol','hq_xdamo']]
             
             #对涨跌幅字典进行排序
             dict_ret= sorted(sortdict.items(), key=lambda d:d[1], reverse = True)
@@ -634,22 +650,36 @@ class PlotToExcel():
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
              'line':{'color':'blue'},  
                       
-             })             
-         
-    
-        #向图表添加数据 
-        for icount in range(bkCount):
-                
-            bk_chart.add_series({
-             'name':[idxstr, data_top+1, data_left+1],
-             'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
-             'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
-             'line':{'color':colorlist[icount]},
-             'y2_axis': True, 
+             })
+             
+               #向图表添加数据 
+            for icount in range(bkCount):
                     
-             })                 
+                bk_chart.add_series({
+                 'name':[idxstr, data_top+1, data_left+1],
+                 'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
+                 'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
+                 'line':{'color':colorlist[icount]},
+                 'y2_axis': True, 
+                        
+                 })                 
+                
+                data_top+=bkidf_len +2
+             
+        else:
             
-            data_top+=bkidf_len +2
+            #向图表添加数据 
+            for icount in range(bkCount):
+                    
+                bk_chart.add_series({
+                 'name':[idxstr, data_top+1, data_left+1],
+                 'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
+                 'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
+                 'line':{'color':colorlist[icount]},
+                  
+                 })                 
+                
+                data_top+=bkidf_len +2
             
         #bold = wbk.add_format({'bold': 1})
      
@@ -762,7 +792,6 @@ class PlotToExcel():
                        stocklist= sorted(stockchgdict.items(), key=lambda d:d[1], reverse = True)                   
                    
                    
-                   
                    bkStockItem = bkStockdict[int(bkidf_code)] 
                                       
                    bkStockItem = bkStockItem.dropna(how='any')
@@ -774,37 +803,38 @@ class PlotToExcel():
                    tStockdict  = dict(list(bkStockGroup))
                                       
                    for slist in stocklist: 
-                       
-                                              
+                          
                        scode     = slist[0]
                        
-                       stockitem = tStockdict[scode]
+                       if tStockdict.has_key(scode):
                        
-                       stockitem['hq_date'] = stockitem['hq_date'].astype(str)
-                       
-                       stocklen  = len(stockitem)
+                           stockitem = tStockdict[scode]
+                           
+                           stockitem['hq_date'] = stockitem['hq_date'].astype(str)
+                           
+                           stocklen  = len(stockitem)
+                                                  
+                           snamelist = stockitem['stock_name'].tolist()
+                                                  
+                           stockname =  snamelist[0]
+                           
+                           tmpdatalist = [scode,sdata_top,sdata_left,stocklen,stockname]
                                               
-                       snamelist = stockitem['stock_name'].tolist()
-                                              
-                       stockname =  snamelist[0]
-                       
-                       tmpdatalist = [scode,sdata_top,sdata_left,stocklen,stockname]
-                                          
-                       IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
-                       
-                       for srow in range(0,stocklen):   
-                          #for col in range(left,len(fields)+left):  
-                          
-                          tmplist  = stockitem[srow:srow+1].values.tolist()
-                                                      
-                          datalist = tmplist[0]
+                           IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
+                           
+                           for srow in range(0,stocklen):   
+                              #for col in range(left,len(fields)+left):  
+                              
+                              tmplist  = stockitem[srow:srow+1].values.tolist()
                                                           
-                          IData_Sheet.write_row(sdata_top+srow+1, sdata_left,datalist)
-                               
-                       
-                       sdataXY_list.append(tmpdatalist)
-                       
-                       sdata_top  =    sdata_top +   stocklen +2
+                              datalist = tmplist[0]
+                                                              
+                              IData_Sheet.write_row(sdata_top+srow+1, sdata_left,datalist)
+                                   
+                           
+                           sdataXY_list.append(tmpdatalist)
+                           
+                           sdata_top  =    sdata_top +   stocklen +2
                    
                    sdata_left = sdata_left + len(xdsColumns) + 1 
                
@@ -1072,11 +1102,17 @@ class PlotToExcel():
                bkname = bkname[bkpos+1:]
                
                if bkcount==1 :
-                  bktiles =  bkname
-               else:
                    
-                  bktiles = bktiles + ',' +bkname
-              
+                  bktiles =  bkname
+                  
+               else:
+                  
+                  if bktiles=='':
+                      
+                     bktiles = bkname
+                     
+                  else:
+                     bktiles = bktiles + ',' +bkname  
                
                bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
                
@@ -1218,108 +1254,103 @@ class PlotToExcel():
         
         pic_top   = 2    #图像起始行
         
+        bkdNum = 12  # 按12个行业来区分
         
+        bklen  = len(bkStockdict)     
+        
+        excelCount =  bklen/bkdNum  
+           
         pwd   =  os.getcwd()
         
         fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
         
-        execlfname  = fpwd + self.BCfname
-        
-        execlfname  = execlfname.decode()
-        
-        wbk =xlsxwriter.Workbook(execlfname)  
-        #newwbk = copy(wbk)
-        QR_Sheet   = wbk.add_worksheet(u'指数相对强弱')
-#                
-#        HEQR_Sheet   = wbk.add_worksheet(u'指数混合强弱')
-    
-        IData_Sheet = wbk.add_worksheet(u'指数数据')
-        
-        #画模块
-        headStr='指数强弱排名（涨幅）'
-        
-        headvol= '指数量比（金额）'
-        
-        tailStr='指数强弱排名（跌幅）'
-        
-        tailvol= '指数量比（金额）'
-        
-        
-        xdiColumns= list([u'板块代码', u'板块名称', u'日期', u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
-              
-        xdiColumnlens = len(xdiColumns) 
-        
-        
-        xdsColumns= list([u'板块代码', u'板块名称', u'股票代码', u'股票名称',  u'日期',u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对金额比'])
-              
-        xdsColumnlens = len(xdiColumns)   
-        
-        red = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'C0504D','font_size':16,'font_color':'white'})
-        
-        blue = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'8064A2','font_size':16,'font_color':'white'})
-        
-        
-        #间隔格式
-        JG = wbk.add_format({'bg_color':'CCC0DA'})
-        
-        #处理第一行excel格式
-        QR_Sheet.merge_range(0,0,1,xdiColumnlens,headStr,red)         
-        QR_Sheet.set_column(xdiColumnlens+1,xdiColumnlens+1,0.3,JG)
-
-        QR_Sheet.merge_range(0,xdiColumnlens+2,1,2*xdiColumnlens+2,headvol,blue)               
-        QR_Sheet.set_column(2*xdiColumnlens+3,2*xdiColumnlens+3,0.3,JG)
-                
-        QR_Sheet.merge_range(0,2*xdiColumnlens+4,1,3*xdiColumnlens+4,tailStr,red)                    
-        QR_Sheet.set_column(3*xdiColumnlens+5,3*xdiColumnlens+5,0.3,JG)
-        
-        QR_Sheet.merge_range(0,3*xdiColumnlens+6,1,4*xdiColumnlens+6,tailvol,blue)
-#               
-#        #处理第一行excel格式
-#        HEQR_Sheet.merge_range(0,0,1,xdiColumnlens,headStr,red)         
-#        HEQR_Sheet.set_column(xdiColumnlens+1,xdiColumnlens+1,0.3,JG)
-#
-#        HEQR_Sheet.merge_range(0,xdiColumnlens+2,1,2*xdiColumnlens+2,headvol,blue)               
-#        HEQR_Sheet.set_column(2*xdiColumnlens+3,2*xdiColumnlens+3,0.3,JG)
-                
-        
-        #基准数据写入数据sheet中
-        if len(bmidf)>0:
-            bmidf_group = bmidf.groupby('hq_code')
-    
-            bmi_list = list(bmidf_group)
-            
-            bmiColumns = list([u'基准指数代码', u'基准指数名称', u'日期', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
-            
-            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
-                  
-            (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
-            
-            data_left = data_left +len(bmiColumns) +2
-            
-        
-        
+         
         if len(xdhead_idf)>0:
-            
-            #数据分组        
+                
+         #数据分组        
             xdhead_group = xdhead_idf.groupby('hq_code',sort=False)
-            
+                
             bkidf_list= list(xdhead_group)
-                        
-            (wbk,pic_left,bkdataXY_dict,bkXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict)
+        
+        #按板块个数来生成excel文件
+        
+        for exlnum in range(excelCount):
+                            
+            execlfname  = fpwd + self.BCfname+'-'+ str(exlnum)
             
-            data_left = data_left+xdiColumnlens+2
-#            
-#                
-#        if len(xdtail_idf)>0:            
-#                       
-#            #数据分组        
-#            xdtail_group = xdtail_idf.groupby('hq_code',sort=False)                                           
-#            #生成dict        
-#            bkidf_list = list(xdtail_group)
-#            
-#            (wbk,pic_left,bkdataXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns)
-#               
-        wbk.close()
+            execlfname  = execlfname.decode()
+            
+            wbk =xlsxwriter.Workbook(execlfname)  
+                    
+            #newwbk = copy(wbk)
+            QR_Sheet   = wbk.add_worksheet(u'指数相对强弱')
+        
+            IData_Sheet = wbk.add_worksheet(u'指数数据')
+            
+            #画模块
+            headStr='指数强弱排名（涨幅）'
+            
+            headvol= '指数量比（金额）'
+            
+            tailStr='指数强弱排名（跌幅）'
+            
+            tailvol= '指数量比（金额）'
+            
+            
+            xdiColumns= list([u'板块代码', u'板块名称', u'日期', u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
+                  
+            xdiColumnlens = len(xdiColumns) 
+            
+            
+            xdsColumns= list([u'板块代码', u'板块名称', u'股票代码', u'股票名称',  u'日期',u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对金额比'])
+                  
+            xdsColumnlens = len(xdiColumns)   
+            
+            red = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'C0504D','font_size':16,'font_color':'white'})
+            
+            blue = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'8064A2','font_size':16,'font_color':'white'})
+            
+            
+            #间隔格式
+            JG = wbk.add_format({'bg_color':'CCC0DA'})
+            
+            #处理第一行excel格式
+            QR_Sheet.merge_range(0,0,1,xdiColumnlens,headStr,red)         
+            QR_Sheet.set_column(xdiColumnlens+1,xdiColumnlens+1,0.3,JG)
+    
+            QR_Sheet.merge_range(0,xdiColumnlens+2,1,2*xdiColumnlens+2,headvol,blue)               
+            QR_Sheet.set_column(2*xdiColumnlens+3,2*xdiColumnlens+3,0.3,JG)
+                    
+            QR_Sheet.merge_range(0,2*xdiColumnlens+4,1,3*xdiColumnlens+4,tailStr,red)                    
+            QR_Sheet.set_column(3*xdiColumnlens+5,3*xdiColumnlens+5,0.3,JG)
+            
+            QR_Sheet.merge_range(0,3*xdiColumnlens+6,1,4*xdiColumnlens+6,tailvol,blue)
+        
+            #基准数据写入数据sheet中
+            if len(bmidf)>0:
+                bmidf_group = bmidf.groupby('hq_code')
+        
+                bmi_list = list(bmidf_group)
+                
+                bmiColumns = list([u'基准指数代码', u'基准指数名称', u'日期', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
+                
+                #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
+                      
+                (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
+                
+                data_left = data_left +len(bmiColumns) +2
+                
+            
+            
+            if len(xdhead_idf)>0:
+                
+                #数据分组        
+                            
+                (wbk,pic_left,bkdataXY_dict,bkXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict)
+                
+                data_left = data_left+xdiColumnlens+2
+      
+            wbk.close()
         
      
     def bulidAllIndexExcelFrame(self,bmidf,xdtmp_idf):
@@ -1544,14 +1575,27 @@ class PlotToExcel():
         
                 
         #计算所有
-        Salldf     =   allrawdf.groupby('hq_date').agg(
-                      {'hq_vol':'sum',
-                       'hq_amo':'sum'                       
-                      })
-        
-        Salldf['hq_date'] = Salldf.index
-        
-        Salldf = Salldf.set_index(bmidf.index)
+        if KlineType =='D':
+                
+            Salldf     =   allrawdf.groupby('hq_date').agg(
+                          {'hq_vol':'sum',
+                           'hq_amo':'sum'                       
+                          })
+            
+            Salldf['hq_date'] = Salldf.index
+            
+            Salldf = Salldf.set_index(bmidf.index)
+            
+        else:
+            
+            Salldf     =   allrawdf.groupby('index').agg(
+                          {'hq_vol':'sum',
+                           'hq_amo':'sum'                       
+                          })
+            
+            Salldf['hq_date'] = Salldf.index
+            
+            Salldf = Salldf.set_index(bmidf.index)
         
                         
         bmidf['hq_allvol'] = Salldf['hq_vol']
@@ -1584,7 +1628,7 @@ if '__main__'==__name__:
     
     dataFlag  = False
      
-    dataFlag  = True
+    #dataFlag  = True
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         tdd.getAllTypeDir()
@@ -1600,12 +1644,12 @@ if '__main__'==__name__:
     
     #获取数据起始时间
     
-    start_date = datetime.strptime("2017-05-03", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-07-17", "%Y-%m-%d")
     
-    end_date = datetime.strptime("2017-07-20", "%Y-%m-%d")
+    end_date = datetime.strptime("2017-07-21", "%Y-%m-%d")
     
     #K线类型    
-    KlineType ='D'
+    KlineType ='5M'
         
     #获取所有板块数据
     mktindex  = pte.mktindex
