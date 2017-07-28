@@ -25,9 +25,9 @@ import time
 
 import glob
 
-from PlotData.plotpic.picZH import  *
-from PlotData.plotpic.picZqZH import  *
-from PlotData.plotexcel.plotToExcel import *
+from PlotData.plotpic import picZH
+from PlotData.plotpic import picZqZH
+from PlotData.plotexcel import plotToExcel
 import ZJ
 import rftrading
 import tushare as ts
@@ -914,27 +914,29 @@ class ZH():
         return data
 
 
-    def zjRank(self,sdate,edate,allFlag=0):      
+    def zjRank(self,sdate,edate,allFlag=0): 
+        sdate=sdate+' 00:00'
+        edate=edate+" 15:00"
         z=ZJ.ZJ()
         zj=z.zqAmoMin(sdate,edate)
-#        zj200=self.getRF(30,zj)
-#        zj30=self.getRF(200,zj)
-#        if allFlag==0:     
-#            zj200=self.rank(zj200,'zj')
-#            zj30=self.rank(zj30,'zj')
-#            return zj200,zj30
-#        else:
-#            zj=self.rank(zj.loc[:,['hq_code','vbigper','bigD','vbigD','lbigD']] ,'zj')        
-
-        zj200,zj30,zj=z.zqAmo(sdate,edate)        
-        if allFlag==0:
-            zj200=zj200.loc[:,['hq_code','vbigper']]
-            zj30=zj30.loc[:,['hq_code','vbigper']]     
+        zj200=self.getRF(200,zj)
+        zj30=self.getRF(30,zj)
+        if allFlag==0:     
             zj200=self.rank(zj200,'zj')
             zj30=self.rank(zj30,'zj')
             return zj200,zj30
         else:
-            zj=self.rank(zj.loc[:,['hq_code','vbigper','bigD','vbigD','lbigD']] ,'zj')
+            zj=self.rank(zj,'zj')        
+
+#        zj200,zj30,zj=z.zqAmo(sdate,edate)        
+#        if allFlag==0:
+#            zj200=zj200.loc[:,['hq_code','vbigper']]
+#            zj30=zj30.loc[:,['hq_code','vbigper']]     
+#            zj200=self.rank(zj200,'zj')
+#            zj30=self.rank(zj30,'zj')
+#            return zj200,zj30
+#        else:
+#            zj=self.rank(zj.loc[:,['hq_code','vbigper','bigD','vbigD','lbigD']] ,'zj')
             return zj
                
     def factorRank(self,sdate,edate,allFlag=0):
@@ -1041,7 +1043,8 @@ class ZH():
             df_rank=pd.concat([stockZqChg,frank,zjdata,rzye_df,atr],axis=1)
             df_rank.loc[:,['mt_rzye','rzgrade']]=df_rank.loc[:,['mt_rzye','rzgrade']].fillna(0)
             df_rank['grade']=df_rank['chggrade']*0.3+df_rank['zjgrade']*0.3+df_rank['atrgrade']*0.1+df_rank['rzgrade']*0.1+df_rank['fgrade']*0.2
-            del df_rank['cFlag']
+            if 'cFlag' in df_rank:       
+                del df_rank['cFlag']
             df_rank=df_rank.sort_values('grade',ascending=False).dropna() 
             df_rank.index=np.arange(len(df_rank))       
             return df_rank
@@ -1068,7 +1071,7 @@ class ZH():
             pte = plotToExcel.PlotToExcel()
             pte.bulidAvg(avg,avgChg,stock200ZqChg,stock30ZqChg,df_rank,period)        
         else:
-            df_rank=df_rank.loc[:,['hq_name','chgper','vbigD','lbigD','bigD','vbigper','mt_rzye','atr','fgrade','grade']]
+            df_rank=df_rank.loc[:,['hq_name','chgper','bigD','bigper','mt_rzye','atr','fgrade','grade']]
             df_rank.columns=['名称','涨幅','特大净额','大净额','总净额','特大占比','融资余额','ATR','异动级别','总评']
             df_rank.to_csv(u'E:\\工作\\数据备份\\全市场选股\\'+period+'.csv',encoding='gbk',float_format='%.2f')
         
@@ -1149,13 +1152,11 @@ class ZH():
 if __name__=='__main__':
 #    t1=time.time()
     #注意 纯日期不要打空格
-
-    print sys.path
-    
-    c=ZH('2017-06-20','2017-07-21')
+    c=ZH('2017-06-27','2017-07-28')
+    #a,b=c.zjRank(c.tstartdate,c.tenddate)
     #amo=c.indexCashflow('2017-07-17 14:30','2017-07-17 15:00')
     #c.buildMinRankForm(1)
-    c.buildJzRankForm(update=True,rankFlag=0)
+    c.buildJzRankForm(update=False,rankFlag=0,allFlag=0)
 #    stock,index,dapan=c.getDayData()
 #    a,b=c.getAllChg(stock,dapan)
 

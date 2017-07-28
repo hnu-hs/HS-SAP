@@ -24,7 +24,7 @@ sys.setdefaultencoding('utf-8')
 
 class ZJ():
     def __init__(self):
-        self.dir=u'F:\\HS-SAP\\PySAP-Master\\Data\\History\\Stock\\股票tick数据\\'
+        self.dir=u'F:\\PySAP\\Data\\History\\Stock\\股票tick数据\\'
         
         self.engine=create_engine('mysql://root:lzg000@127.0.0.1/stocksystem?charset=utf8')
         #储存每日资金流的CSV文件目录
@@ -424,7 +424,7 @@ if __name__=='__main__':
     #z.indexBigCashflow('2017-07-14 00:00','2017-07-14 15:00')
     
     
-    z.tickTradeType('20170717','20170721',1)
+    z.tickTradeType('20170703','20170726',1)
     
     k =1
     #z.indexBigCashflow('2017-07-19 00:00','2017-07-19 15:00')
