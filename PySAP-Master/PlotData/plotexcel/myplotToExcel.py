@@ -63,7 +63,7 @@ class TmpDealData():
 #        self.stockdir_1Min = u'F:\股票数据\\个股数据\\1分钟线\\复权\\'
     
     #采取读取配置文件方式    
-    def getAllTypeDir(self):
+    def getAllTypeDir(self,lastrow):
         
         #配置文件目录
         
@@ -112,7 +112,7 @@ class TmpDealData():
                     
                     klinetype = dbInfo[dbPos+1:]
                     
-                    self.setTdxData(fkey,dataPath,klinetype,self.fbulidNum,dtable,self.engine,2)
+                    self.setTdxData(fkey,dataPath,klinetype,self.fbulidNum,dtable,self.engine,lastrow)
                 
         m =11
         
@@ -171,9 +171,11 @@ class TmpDealData():
                     print fname
                                                         
                     if klinetype=="Day":
-                                                
-                        fdata=pd.read_table(fname,header=1,names=sheader_Day)
-                        
+                        try:                        
+                           fdata=pd.read_table(fname,header=1,names=sheader_Day,encoding='utf-8')
+                        except:
+                           fdata=pd.read_table(fname,header=1,names=sheader_Day,encoding='gbk')
+                           
                         if len(fdata)>lastrow and lastrow>=1:
                            
                            fdata=fdata.iloc[:-lastrow] 
@@ -185,7 +187,11 @@ class TmpDealData():
                         
                     else:
                         
-                        fdata=pd.read_table(fname,header=1,names=sheader_Min,dtype={'hq_time':str})
+                        try:
+                            fdata=pd.read_table(fname,header=1,names=sheader_Min,dtype={'hq_time':str},encoding='utf-8')
+                        except:
+
+                            fdata=pd.read_table(fname,header=1,names=sheader_Min,dtype={'hq_time':str},encoding='gbk')
                              
                         if len(fdata)>lastrow and lastrow>=1:
                             
@@ -236,9 +242,9 @@ class TmpDealData():
                         
                         if fcount % int(fnum)==0:
                             
-                                Afdata.to_sql(dtable,con=engine,if_exists='append')
+                            Afdata.to_sql(dtable,con=engine,if_exists='append')
                                 
-                                Afdata=pd.DataFrame()
+                            Afdata=pd.DataFrame()
                         
                         elif fl==lastfile:   
                                             
@@ -317,6 +323,9 @@ class PlotToExcel():
             idf_close  = idf_tmp[0]
         
             idf['hq_preclose'] = idf['hq_close'].shift(1)
+            
+              
+            
             
             idf['hq_chg']= ((idf['hq_close']/idf['hq_preclose'] -1)*100).round(2)
             
@@ -838,6 +847,10 @@ class PlotToExcel():
                               tmplist  = stockitem[srow:srow+1].values.tolist()
                                                           
                               datalist = tmplist[0]
+                              
+                              
+                              if bkidf_code=='880447':
+                                  mm = 1
                                                               
                               IData_Sheet.write_row(sdata_top+srow+1, sdata_left,datalist)
                                    
@@ -1665,12 +1678,14 @@ if '__main__'==__name__:
     
     tdd = TmpDealData()
     
+    lastrow = 1
+    
     dataFlag  = False
      
     #dataFlag  = True
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
-        tdd.getAllTypeDir()
+        tdd.getAllTypeDir(lastrow)
     
     
     #基准对比指数
@@ -1683,12 +1698,12 @@ if '__main__'==__name__:
     
     #获取数据起始时间
     
-    start_date = datetime.strptime("2017-05-17", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-07-17", "%Y-%m-%d")
     
-    end_date = datetime.strptime("2017-07-20", "%Y-%m-%d")
+    end_date = datetime.strptime("2017-07-31", "%Y-%m-%d")
     
     #K线类型    
-    KlineType ='D'
+    KlineType ='5M'
         
     #获取所有板块数据
     mktindex  = pte.mktindex
