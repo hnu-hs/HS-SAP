@@ -323,13 +323,31 @@ class PlotToExcel():
             idf_close  = idf_tmp[0]
         
             idf['hq_preclose'] = idf['hq_close'].shift(1)
+#                        
+#            #获取第一个数据
+#            fprecloseItem =  idf['hq_preclose'][1]
+#            
+#            #获取第一个数据
+#            fcloseItem =  idf['hq_close'][1]
+#            
+#            if fprecloseItem==0 and fcloseItem!=0:
+#               idf['hq_preclose'][1] =  fcloseItem
+#            
+            preidf = idf['hq_preclose']
             
-              
+            #处理
+            preidf.fillna(method='bfill')
             
             
             idf['hq_chg']= ((idf['hq_close']/idf['hq_preclose'] -1)*100).round(2)
             
             idf['hq_allchg']= ((idf['hq_close']/idf_close -1)*100).round(2)
+            
+            
+            idf['hq_allchg'] = np.where(idf['hq_allchg']==np.inf, -1, idf['hq_allchg'])
+            
+            
+            idf['hq_chg'] = np.where(idf['hq_chg']==np.inf, -1, idf['hq_chg'])
         
         idf_ret = idf
         
@@ -1682,7 +1700,7 @@ if '__main__'==__name__:
     
     dataFlag  = False
      
-    #dataFlag  = True
+    dataFlag  = True
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         tdd.getAllTypeDir(lastrow)
