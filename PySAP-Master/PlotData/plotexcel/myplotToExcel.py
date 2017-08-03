@@ -271,7 +271,7 @@ class PlotToExcel():
                 
         self.BCfname = '\\PlotData\\export\\excel\\板块强弱分类数据'
         
-        self.BAfname = '\\PlotData\\export\\excel\\板块强弱数据.xlsx'
+        self.BAfname = '\\PlotData\\export\\excel\\板块强弱数据'
         
         pass;
           
@@ -1287,7 +1287,7 @@ class PlotToExcel():
         return  IData_Sheet,idataXY_dict
         
     #构建指数excel构架    
-    def bulidIndexExcelFrame(self,bmidf,xdhead_idf,bkStockdict,bkStockChgdict):
+    def bulidIndexExcelFrame(self,bmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType):
                 
         
         
@@ -1308,9 +1308,7 @@ class PlotToExcel():
             xdhead_group = xdhead_idf.groupby('hq_code',sort=False)
                 
             bkidf_list= list(xdhead_group)
-            
-            
-        
+          
         #按板块个数来生成excel文件
         
         for exlnum in range(excelCount):
@@ -1323,7 +1321,7 @@ class PlotToExcel():
             
             pic_top   = 2    #图像起始行
                             
-            execlfname  = fpwd + self.BCfname+'-'+ str(exlnum)+'.xlsx'
+            execlfname  = fpwd + self.BCfname +'-'+ str(exlnum)+'('+KlineType+').xlsx'
             
             execlfname  = execlfname.decode()
             
@@ -1382,13 +1380,10 @@ class PlotToExcel():
                 bmiColumns = list([u'基准指数代码', u'基准指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
                 
                 #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
-                      
                 (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
                 
                 data_left = data_left +len(bmiColumns) +2
-                
-            
-            
+              
             if len(xdhead_idf)>0:
                 
                 #数据分组        
@@ -1403,7 +1398,7 @@ class PlotToExcel():
             wbk.close()
         
      
-    def bulidAllIndexExcelFrame(self,bmidf,xdtmp_idf):
+    def bulidAllIndexExcelFrame(self,bmidf,xdtmp_idf,KlineType):
                 
         data_left = 0    #数据起始列
         
@@ -1418,7 +1413,7 @@ class PlotToExcel():
         
         fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
         
-        execlfname  = fpwd + self.BAfname
+        execlfname  = fpwd + self.BAfname+'('+KlineType+').xlsx'
         
         execlfname  = execlfname.decode()
         
@@ -1514,14 +1509,10 @@ class PlotToExcel():
         return retdata
         
      # 获取前几，后几排名数据 
-    def getSortedIndexdf(self,xd_idf,sortlist,rankingnum):
+    def getSortedIndexdf(self,xd_idf,sortlist):
         
         idf_len = len(sortlist)
         
-        headlist = []
-        
-        taillist = []
-
         tmplist = []
         
         bkidf_group = xd_idf.groupby('hq_code')
@@ -1533,8 +1524,6 @@ class PlotToExcel():
         xdtmp_idf = pd.DataFrame()
         
         xdhead_idf = pd.DataFrame()
-        
-        xdtail_idf = pd.DataFrame()
     
         #先整体df进行排序，然后再进行分类
     
@@ -1556,52 +1545,34 @@ class PlotToExcel():
             xdtmp_idf=  xdtmp_idf.append(bkitem) 
         
         #如果个数大于，指定显示数量
-        if idf_len>0 and rankingnum<idf_len:
+        if idf_len>0 :
             
              #获取前几后几 
-            for sloc in range(rankingnum):
+            for sloc in range(idf_len):
                 
                 headitem  = sortlist[sloc]
-                 
-                tailitem  = sortlist[0-sloc-1] 
                 
-                headlist.append(headitem[0])
-                
-                taillist.append(tailitem[0])
-            
-            #取出前几数据
-            
-            for hlist in headlist:
-                
-               dictkey = str(hlist) 
+                hstr      = headitem[0]
+                                
+                dictkey = str(hstr) 
                
-               if(bkidf_dict.has_key(dictkey)):
+                if(bkidf_dict.has_key(dictkey)):
                    
                    bkitem = bkidf_dict[dictkey]
                    
                    xdhead_idf=  xdhead_idf.append(bkitem)
-                               
-            #取出后几数据              
-            for hlist in taillist:
-                
-               dictkey = str(hlist) 
-               
-               if(bkidf_dict.has_key(dictkey)):
-                   
-                   bkitem = bkidf_dict[dictkey]
-                   
-                   xdtail_idf = xdtail_idf.append(bkitem)
+            
                    
         else:
             
             xdhead_idf = xdtmp_idf
            
             
-        return xdtmp_idf,xdhead_idf,xdtail_idf
+        return xdtmp_idf,xdhead_idf
 
         
     #excel中plot相对指数强弱图形
-    def PlotIndexPicToExcel(self,benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,startDate,endDate,KlineType,rankingnum,bkdict):
+    def PlotIndexPicToExcel(self,benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,startDate,endDate,KlineType,bkdict):
         
         
         indexType = 'BoardIndex'
@@ -1679,13 +1650,13 @@ class PlotToExcel():
         ebmidf  = self.getExcelIndexData(bmidf,bkdict)
         
         # 获取前几，后几排名数据     
-        (xdtmp_idf,xdhead_idf,xdtail_idf) =self.getSortedIndexdf(xd_idf,sortlist,rankingnum)
+        (xdtmp_idf,xdhead_idf) =self.getSortedIndexdf(xd_idf,sortlist)
         
         #画出指数排名图形
-        self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict)
+        self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType)
                 
         #画出指数排名图形（所有图形）
-        self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf)
+        self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf,KlineType)
         
         kk =1 
         
@@ -1694,13 +1665,15 @@ if '__main__'==__name__:
     
     pte = PlotToExcel()
     
-    tdd = TmpDealData()
+    tdd = TmpDealData()    
+    
+    KlineDict ={}
     
     lastrow = 1
     
     dataFlag  = False
      
-    dataFlag  = True
+    #dataFlag  = True
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         tdd.getAllTypeDir(lastrow)
@@ -1713,32 +1686,53 @@ if '__main__'==__name__:
     
     #全市场指数（000002 A股指数，399107深圳A指数）
     allMarketIndex = '000002,399107'
-    
-    #获取数据起始时间
-    
-    start_date = datetime.strptime("2017-07-17", "%Y-%m-%d")
-    
-    end_date = datetime.strptime("2017-07-31", "%Y-%m-%d")
+#        
+#    #K线类型    
+#    KlineType ='5M'
+#        
+#    #获取数据起始时间
+#    start_date = datetime.strptime("2017-07-24", "%Y-%m-%d")
+#    
+#    end_date   = datetime.strptime("2017-08-03", "%Y-%m-%d")
+#    
+#    timetuple   =(start_date,end_date)
+#    
+#    
+#    KlineDict[KlineType] = timetuple
     
     #K线类型    
-    KlineType ='5M'
+    KlineType ='D'
+        
+    #获取数据起始时间
+    start_date = datetime.strptime("2017-05-01", "%Y-%m-%d")
+    
+    end_date   = datetime.strptime("2017-08-02", "%Y-%m-%d")
+    
+    timetuple   =(start_date,end_date)
+    
+    
+    KlineDict[KlineType] = timetuple
         
     #获取所有板块数据
     mktindex  = pte.mktindex
     
     #获取板块与下属关联股票
+    
+    #通达信行业
     (bkLinedf,bkxfdf) = mktindex.MktIndexToStocksClassify('80201')
     
+    #通达信细分行业
+    (bkLinedf_xf,bkxfdf_xf) = mktindex.MktIndexToStocksClassify('80202')
     
+    bkLinedf = bkLinedf.append(bkLinedf_xf, ignore_index=True)
+    
+    #通达信行业代码    
     bkcodes = bkLinedf['bz_indexcode'].astype('str')
     
-    bkcodelist = bkcodes.tolist()
-    
+    bkcodelist = bkcodes.tolist()    
+        
     bkcodestr = ','.join(bkcodes)
     
-    tailIndexs=''
-    
-    rankingnum =56
     
     bkdict = bkLinedf.set_index('bz_indexcode')['bz_name'].to_dict()
         
@@ -1746,14 +1740,19 @@ if '__main__'==__name__:
     bkdict[benchmarkIndex]=benchmarkName
       
     
-    bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)
+    bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)    
     
-    print bkxfdf.dtypes
-    
-    #指数分类对比图
-    pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,start_date,end_date,KlineType,rankingnum,bkdict)
-    
-    
+    for kdict in KlineDict:
+       #指数分类对比图
+       KlineType = kdict
+       
+       tkeytuple = KlineDict[KlineType] 
+       
+       start_date = tkeytuple[0]
+       
+       end_date   = tkeytuple[1]
+        
+       pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,start_date,end_date,KlineType,bkdict)
     
     
     m = 1
