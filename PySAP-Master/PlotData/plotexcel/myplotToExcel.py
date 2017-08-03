@@ -1738,6 +1738,8 @@ if '__main__'==__name__:
         
     
     bkdict[benchmarkIndex]=benchmarkName
+    
+    bkxfdf = bkxfdf.append(bkxfdf_xf, ignore_index=True)
       
     
     bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)    
