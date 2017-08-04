@@ -242,13 +242,13 @@ class TmpDealData():
                         
                         if fcount % int(fnum)==0:
                             
-                            Afdata.to_sql(dtable,con=engine,if_exists='append')
+                            Afdata.to_sql(dtable,con=engine,if_exists='replace')
                                 
                             Afdata=pd.DataFrame()
                         
                         elif fl==lastfile:   
                                             
-                            Afdata.to_sql(dtable,con=engine,if_exists='append')
+                            Afdata.to_sql(dtable,con=engine,if_exists='replace')
                             
                             Afdata=pd.DataFrame()
                                           
@@ -1672,13 +1672,28 @@ if '__main__'==__name__:
     lastrow = 1
     
     dataFlag  = False
+    
+    lineDir = '\\BoardIndex\\config\\通达信行业.txt'
      
-    #dataFlag  = True
+    dataFlag  = True
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         tdd.getAllTypeDir(lastrow)
     
     
+    #配置文件目录
+        
+    pwd   =  os.getcwd()
+        
+    fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
+        
+    dbfname  = fpwd + lineDir
+        
+    fheader = ['Lcode','LName','Line','Linexf']
+    
+    #生成目录字典
+    fdata=pd.read_table(dbfname.decode('utf-8'),header=1,names=fheader,delimiter=',')
+          
     #基准对比指数
     benchmarkIndex = '399317'
         
@@ -1686,19 +1701,19 @@ if '__main__'==__name__:
     
     #全市场指数（000002 A股指数，399107深圳A指数）
     allMarketIndex = '000002,399107'
-#        
-#    #K线类型    
-#    KlineType ='5M'
-#        
-#    #获取数据起始时间
-#    start_date = datetime.strptime("2017-07-24", "%Y-%m-%d")
-#    
-#    end_date   = datetime.strptime("2017-08-03", "%Y-%m-%d")
-#    
-#    timetuple   =(start_date,end_date)
-#    
-#    
-#    KlineDict[KlineType] = timetuple
+        
+    #K线类型    
+    KlineType ='5M'
+        
+    #获取数据起始时间
+    start_date = datetime.strptime("2017-07-24", "%Y-%m-%d")
+    
+    end_date   = datetime.strptime("2017-08-03", "%Y-%m-%d")
+    
+    timetuple   =(start_date,end_date)
+    
+    
+    KlineDict[KlineType] = timetuple
     
     #K线类型    
     KlineType ='D'
@@ -1713,7 +1728,7 @@ if '__main__'==__name__:
     
     KlineDict[KlineType] = timetuple
         
-    #获取所有板块数据
+#    #获取所有板块数据
     mktindex  = pte.mktindex
     
     #获取板块与下属关联股票
