@@ -63,7 +63,7 @@ class TmpDealData():
 #        self.stockdir_1Min = u'F:\股票数据\\个股数据\\1分钟线\\复权\\'
     
     #采取读取配置文件方式    
-    def getAllTypeDir(self,lastrow):
+    def getAllTypeDir(self,allflag,Adate):
         
         #配置文件目录
         
@@ -112,12 +112,12 @@ class TmpDealData():
                     
                     klinetype = dbInfo[dbPos+1:]
                     
-                    self.setTdxData(fkey,dataPath,klinetype,self.fbulidNum,dtable,self.engine,lastrow)
+                    self.setTdxData(fkey,dataPath,klinetype,self.fbulidNum,dtable,self.engine,allflag,Adate)
                 
         m =11
         
     #构建通达信通用数据录入函数
-    def setTdxData(self,fkey,fdir,klinetype,fnum,dtable,engine,lastrow):
+    def setTdxData(self,fkey,fdir,klinetype,fnum,dtable,engine,allflag,Adate):
         
         
         flist = os.listdir(fdir)
@@ -132,135 +132,144 @@ class TmpDealData():
         
         if flist:
            lastfile=flist[-1]
+           
+        
+         
               
         for fl in  flist:
             
+            print fcount
+            
+            
+            
+
             fname  = fdir + str(fl)   
             
             fcount = fcount +1 
+                        
+            flcode = fl.replace('.txt','').replace('SH#','').replace('SZ#','')
             
-            #文件读取第一行信息
-            try:
+            if klinetype=="Day":
                 
-                rfile  = open(fname,'r') 
-                
-                fline = rfile.readline()
-                
-                flinelist = fline.split()
-                
-                if len(flinelist)==4 :
-                    
-                    # 品种代码
-                    flcode = flinelist[0]
-                    
-                    # 品种名称
-                    flname = flinelist[1]
-                    
-                    # 数据类型，通达信支持三种类型数据：1.日线，2. 5分钟， 3. 1分钟
-                    flklinetype = flinelist[2]
-                     
-                    # 数据是否已除权 
-                    flrights   = flinelist[3] 
-                    
-                    flklinetype = flklinetype.strip() 
-                    
-                    fdataflag = False
-                                                            
-                    #使用pandas格式读取数据
-                                                            
-                    print fname
-                                                        
-                    if klinetype=="Day":
-                        try:                        
-                           fdata=pd.read_table(fname,header=1,names=sheader_Day,encoding='utf-8')
-                        except:
-                           fdata=pd.read_table(fname,header=1,names=sheader_Day,encoding='gbk')
-                           
-                        if len(fdata)>lastrow and lastrow>=1:
-                           
-                           fdata=fdata.iloc[:-lastrow] 
-                                                                              
-                           fdatelist =fdata['hq_date'].tolist()
-                           
-                           fdataflag = True
-                           
+                try:                        
+                   fdata=pd.read_table(fname,header=1,names=sheader_Day,encoding='utf-8')
+                except:
+                   fdata=pd.read_table(fname,header=1,names=sheader_Day,encoding='gbk')
+                   
+                if len(fdata)>lastrow and lastrow>=1:
+                   
+                   fdata=fdata[:-1] 
+                                                                      
+                   fdatelist =fdata['hq_date'].tolist()
+                   
+                   fdataflag = True
+                   
+            else:
                         
-                    else:
-                        
-                        try:
-                            fdata=pd.read_table(fname,header=1,names=sheader_Min,dtype={'hq_time':str},encoding='utf-8')
-                        except:
+                try:
+                    fdata=pd.read_table(fname,header=1,names=sheader_Min,dtype={'hq_time':str},encoding='utf-8')
+                except:
 
-                            fdata=pd.read_table(fname,header=1,names=sheader_Min,dtype={'hq_time':str},encoding='gbk')
-                             
-                        if len(fdata)>lastrow and lastrow>=1:
-                            
-                           fdata=fdata.iloc[:-lastrow] 
-                                               
-                           fdatedf  =  fdata['hq_date'] + " " + fdata['hq_time']
-                                                
-                           fdatelist = fdatedf.tolist()
-                           
-                           fdataflag = True
+                    fdata=pd.read_table(fname,header=1,names=sheader_Min,dtype={'hq_time':str},encoding='gbk')
+                     
+                if len(fdata)>lastrow and lastrow>=1:
                     
-                    if fdataflag:
+                   fdata=fdata[:-1] 
+                                       
+                   fdatedf  =  fdata['hq_date'] + " " + fdata['hq_time']
+                                        
+                   fdatelist = fdatedf.tolist()
+                   
+                   fdataflag = True
+                   
+                    
+            if fdataflag:
                         
-                        if '\xef\xbb\xbf'  in flcode:
-                            flcode = flcode.replace('\xef\xbb\xbf','')
+                 if '\xef\xbb\xbf'  in flcode:
+                      flcode = flcode.replace('\xef\xbb\xbf','')
                             
-                        fdcolumnsIndex = fdata.columns
+                 fdcolumnsIndex = fdata.columns
                         
-                        # 保留小数点后2位
+                 # 保留小数点后2位
                         
-                        if 'hq_amo' in fdcolumnsIndex:
+                 if 'hq_amo' in fdcolumnsIndex:
                             
-                            tmp  = fdata['hq_amo'] /100000000
+                     tmp  = fdata['hq_amo'] /100000000
                                                     
-                            fdata['hq_amo'] = tmp.round(2)
+                     fdata['hq_amo'] = tmp.round(2)
                             
-                        if 'hq_vol' in fdcolumnsIndex:
+                 if 'hq_vol' in fdcolumnsIndex:
                             
-                            if fkey!='Stock':                       
-                                tmp  = fdata['hq_vol'] /10000
-                            else:
-                                tmp  = fdata['hq_vol'] /1000000
+                     if fkey!='Stock':                       
+                         tmp  = fdata['hq_vol'] /10000
+                     else:
+                         tmp  = fdata['hq_vol'] /1000000
                             
-                            fdata['hq_vol'] = tmp.round(2)
-                            
-                        
-                        
-                        fdata['hq_code'] = int(flcode)   
-                        
-                        findex=pd.to_datetime(fdatelist)
-                        
-                        fdata.set_index(findex,inplace=True)
-                        
-                        Afdata=Afdata.append(fdata)
-                        
-                        if fnum<0:
-                            fnum  = 1
-                        
-                        if fcount % int(fnum)==0:
-                            
-                            Afdata.to_sql(dtable,con=engine,if_exists='replace')
-                                
-                            Afdata=pd.DataFrame()
-                        
-                        elif fl==lastfile:   
-                                            
-                            Afdata.to_sql(dtable,con=engine,if_exists='replace')
-                            
-                            Afdata=pd.DataFrame()
-                                          
-                    m =11
+                     fdata['hq_vol'] = tmp.round(2)
                     
-                    print fcount
-             
-            finally:
+                 fdata['hq_code'] = int(flcode)   
+                    
+                 findex=pd.to_datetime(fdatelist)
+                    
+                 fdata.set_index(findex,inplace=True)
+                 
+                 if allflag: 
+                     
+                    Afdata=Afdata.append(fdata)
+                    
+                    
+                    if fcount==100:
+                        k =1
                         
-                if rfile:            
-                    rfile.close()
- 
+                    if fcount % int(fnum)==0:
+                        
+                        print fdir  
+                        
+                        
+                        if fcount==fnum:
+                            Afdata.to_sql(dtable,con=engine,if_exists='replace')
+                        else:
+                            Afdata.to_sql(dtable,con=engine,if_exists='append') 
+                                
+                        Afdata=pd.DataFrame()
+                        
+                    elif fl==lastfile:
+                        
+                        print fdir
+                        
+                        print '============'
+                        
+                            
+                        if fcount<=fnum:                
+                           Afdata.to_sql(dtable,con=engine,if_exists='replace')
+                        else:
+                           Afdata.to_sql(dtable,con=engine,if_exists='append')  
+                            
+                        Afdata=pd.DataFrame()
+                    
+                 else:
+                     
+                    tmpdata = fdata[fdata['hq_date']==Adate]  
+                    
+                    Afdata=Afdata.append(tmpdata)
+                                             
+                    if fnum<0:
+                       fnum  = 1
+                        
+                    if fcount % int(fnum)==0:
+                            
+                       Afdata.to_sql(dtable,con=engine,if_exists='append') 
+                                
+                       Afdata=pd.DataFrame()
+                        
+                    elif fl==lastfile:
+                       
+                       Afdata.to_sql(dtable,con=engine,if_exists='append')  
+                            
+                       Afdata=pd.DataFrame()
+                  
+            
+          
  
 class PlotToExcel():
     
@@ -732,6 +741,106 @@ class PlotToExcel():
            
         
         return bk_chart    
+        
+    def bulidALLChart_XF(self,wbk,bkXY_dict,flcode,fxflinecodes,bktile,idxstr,shift,shift2):
+        
+        
+        bk_chart = wbk.add_chart({'type': 'line'})
+               
+        bk_chart.set_style(4)
+        
+        # CD6600 橙色，C1C1C1紫色，556B2F草绿色，696969灰色，
+        colorlist =['CD6600','0F0F0F','FF0000','556B2F','FFD700','C1C1C1','556B2F','696969']
+        
+        icount  = 0 
+        
+        if bkXY_dict.has_key(str(flcode)):
+             
+            tmplist = bkXY_dict[str(flcode)]
+                         
+            if len(tmplist)==4:
+                    
+               bkcode  = tmplist[0]
+                    
+               bk_x    = tmplist[1]
+                    
+               bk_y    = tmplist[2]
+                    
+               bk_len  = tmplist[3]
+                    
+               data_top  = bk_x
+                    
+               data_left  = bk_y
+                    
+               bkidf_len = bk_len
+            
+               bk_chart.add_series({
+                          'name':[idxstr, data_top+1, data_left+1],
+                          'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
+                          'values':[idxstr, data_top+1, data_left+shift2, data_top+bkidf_len, data_left+shift2],
+                          'line':{'color':colorlist[icount]},
+                          'y2_axis': True,                         
+                        })  
+               
+               icount +=1      
+        
+        
+        for fxfcode in fxflinecodes:
+            
+            if bkXY_dict.has_key(str(fxfcode)):
+                
+                tmplist = bkXY_dict[str(fxfcode)]
+                
+                
+                if len(tmplist)==4:
+                    
+                    bkcode  = tmplist[0]
+                    
+                    bk_x    = tmplist[1]
+                    
+                    bk_y    = tmplist[2]
+                    
+                    bk_len  = tmplist[3]
+                    
+                    data_top  = bk_x
+                    
+                    data_left  = bk_y
+                    
+                    bkidf_len = bk_len
+                    
+                    bk_chart.add_series({
+                          'name':[idxstr, data_top+1, data_left+1],
+                          'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
+                          'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
+                          'line':{'color':colorlist[icount]},
+                                                  
+                        })  
+                    
+                    icount += 1
+            
+        bk_chart.set_title({'name':bktile,
+                           'name_font': {'size': 10, 'bold': True}
+                          })
+                                   
+        bk_chart.set_x_axis({'name_font': {'size': 10, 'bold': True},
+                            'label_position': 'low',
+                            'interval_unit': 5
+                    
+                          })
+                        
+        bk_chart.set_y_axis({'name':u'日期',
+                            'name_font': {'size': 10, 'bold': True}
+                       })
+   
+        bk_chart.set_y_axis({'name':'',
+                        'name_font': {'size': 10, 'bold': True}
+                        })
+                       
+        bk_chart.set_size({'width':897,'height':300})
+           
+        
+        return bk_chart     
+    
     #构建指数excel构架，,data_left,pic_lef,data_top,pic_top 分别代表数据，图像的 x，y坐标
     
     def bulidExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict,exlnum,bkdNum):      
@@ -1114,10 +1223,12 @@ class PlotToExcel():
         return wbk,pic_lef,bkdataXY_dict,bkXY_dict
         
         
-    def bulidAllExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top):      
+    def bulidAllExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top,fxflinedict):      
            
         #取出排名指数,写入到excel文件中
-           
+        
+        bkXY_dict={}        
+        
         bkcount = 0
            
         if len(bkidf_list)>0:
@@ -1127,9 +1238,10 @@ class PlotToExcel():
             
            if len(dflist)==2:
                
+               bkidf_code  = dflist[0]
+               
                bkcount  = bkcount +1            
                
-               bkidf_code  = dflist[0]
                bkidf_item  = dflist[1]
                
                bkidf_item = bkidf_item.dropna(how='any')
@@ -1140,6 +1252,15 @@ class PlotToExcel():
                
                bkname = bkname[0]
                
+               bktile = bkname +'('+bkidf_code+')'
+               
+               bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
+               
+               bkidf_item['hq_time'] = bkidf_item['hq_time'].astype('str')
+               
+               bkidf_len   = len(bkidf_item)
+              
+                              
                bkpos  = bkname.find("-")
                
                bkname = bkname[bkpos+1:]
@@ -1160,6 +1281,11 @@ class PlotToExcel():
                bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
                
                bkidf_len   = len(bkidf_item)
+               
+               
+               tmpbkist = [bkidf_code,data_top,data_left,bkidf_len]
+               
+               bkXY_dict[bkidf_code] = tmpbkist
                
                #写入头
                IData_Sheet.write_row(data_top, data_left,xdiColumns)
@@ -1236,8 +1362,71 @@ class PlotToExcel():
                    
                    bktiles =''
         
-        pic_lef+=len(xdiColumns) +2   
+        pic_lef+=len(xdiColumns) +2
         
+        
+        tmp_Sheet = wbk.add_worksheet(u'细分行业')
+        
+        pic_top = 0 
+        
+        pic_lef = 0
+        
+        if fxflinedict.has_key(0) :
+           
+           flinedf  = fxflinedict[0]
+                      
+           flinecodes = flinedf['Lcode'].tolist()
+           
+           if len(flinecodes)>0:
+               lastfile = flinecodes[-1]
+           
+           for flcode in flinecodes:
+               
+               if fxflinedict.has_key(flcode):
+                  
+                  fxflinedf  = fxflinedict[flcode]
+                  
+                  fxflinecodes = fxflinedf['Lcode'].tolist()
+                  
+                  idxstr  = u'指数数据'                  
+                   
+                  bktiles = '(' + str(flcode) +')' 
+                   
+                  #指数参数设置
+                  shift =11
+                   
+                  shift2  = 6
+                   
+                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2)
+                        
+                   #画出双轴对比图
+                   
+                  tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                    #bg+=19       
+                 
+                  pic_lef+=len(xdiColumns)+2
+                   
+                  #画成交量与成交金额相对相对量比
+                   
+                  shift =12
+                   
+                  shift2  = 13
+                         
+                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2)
+                        
+                  #画出双轴对比图
+                   
+                  tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
+                    #bg+=19       
+                          
+                  dstart_top = data_top
+                   
+                  pic_top+=15
+                   
+                  if lastfile!=flcode: 
+                       pic_lef-=len(xdiColumns) +2
+                   
+               
         return wbk,pic_lef
         
     # 在excel中插入基准指数的数据，lef，top 分别代表 x，y坐标
@@ -1288,9 +1477,7 @@ class PlotToExcel():
         
     #构建指数excel构架    
     def bulidIndexExcelFrame(self,bmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType):
-                
-        
-        
+              
         bkdNum = 12  # 按12个行业来区分
         
         bklen  = len(bkStockdict)     
@@ -1385,7 +1572,6 @@ class PlotToExcel():
                 data_left = data_left +len(bmiColumns) +2
               
             if len(xdhead_idf)>0:
-                
                 #数据分组        
                 
                 if exlnum==1:
@@ -1398,7 +1584,7 @@ class PlotToExcel():
             wbk.close()
         
      
-    def bulidAllIndexExcelFrame(self,bmidf,xdtmp_idf,KlineType):
+    def bulidAllIndexExcelFrame(self,bmidf,xdtmp_idf,KlineType,fxflinedict):
                 
         data_left = 0    #数据起始列
         
@@ -1431,7 +1617,7 @@ class PlotToExcel():
         headvol= '指数量比（金额）'
         
         
-        xdiColumns= list([u'板块代码', u'板块名称', u'日期', u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
+        xdiColumns= list([u'板块代码', u'板块名称', u'日期',u'时间' ,u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
               
         xdiColumnlens = len(xdiColumns)   
         
@@ -1472,7 +1658,7 @@ class PlotToExcel():
             
             bkidf_list= list(xdtmp_group)
                         
-            (wbk,pic_left)  = self.bulidAllExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top)
+            (wbk,pic_left)  = self.bulidAllExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,fxflinedict)
             
             data_left = data_left+xdiColumnlens+2
                                        
@@ -1562,7 +1748,6 @@ class PlotToExcel():
                    
                    xdhead_idf=  xdhead_idf.append(bkitem)
             
-                   
         else:
             
             xdhead_idf = xdtmp_idf
@@ -1572,7 +1757,7 @@ class PlotToExcel():
 
         
     #excel中plot相对指数强弱图形
-    def PlotIndexPicToExcel(self,benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,startDate,endDate,KlineType,bkdict):
+    def PlotIndexPicToExcel(self,benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,startDate,endDate,KlineType,bkdict,fxflinedict):
         
         
         indexType = 'BoardIndex'
@@ -1656,7 +1841,7 @@ class PlotToExcel():
         self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType)
                 
         #画出指数排名图形（所有图形）
-        self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf,KlineType)
+        self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf,KlineType,fxflinedict)
         
         kk =1 
         
@@ -1674,11 +1859,18 @@ if '__main__'==__name__:
     dataFlag  = False
     
     lineDir = '\\BoardIndex\\config\\通达信行业.txt'
+    
+    Adate = datetime.now().strftime('%Y/%m/%d')
      
     dataFlag  = True
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
-        tdd.getAllTypeDir(lastrow)
+        
+        allflag = False
+        
+        allflag = True        
+        
+        tdd.getAllTypeDir(allflag,Adate)
     
     
     #配置文件目录
@@ -1690,10 +1882,17 @@ if '__main__'==__name__:
     dbfname  = fpwd + lineDir
         
     fheader = ['Lcode','LName','Line','Linexf']
+            
     
     #生成目录字典
-    fdata=pd.read_table(dbfname.decode('utf-8'),header=1,names=fheader,delimiter=',')
-          
+    fdata=pd.read_table(dbfname.decode('utf-8'),header=0,names=fheader,delimiter=',')
+    
+    #生成行业指数
+
+    fxflinegroup = fdata.groupby('Linexf')
+        
+    fxflinedict  = dict(list(fxflinegroup))
+       
     #基准对比指数
     benchmarkIndex = '399317'
         
@@ -1706,7 +1905,7 @@ if '__main__'==__name__:
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-07-24", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
     
     end_date   = datetime.strptime("2017-08-03", "%Y-%m-%d")
     
@@ -1719,7 +1918,7 @@ if '__main__'==__name__:
     KlineType ='D'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-05-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-07-01", "%Y-%m-%d")
     
     end_date   = datetime.strptime("2017-08-02", "%Y-%m-%d")
     
@@ -1769,7 +1968,7 @@ if '__main__'==__name__:
        
        end_date   = tkeytuple[1]
         
-       pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,start_date,end_date,KlineType,bkdict)
+       pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,start_date,end_date,KlineType,bkdict,fxflinedict)
     
     
     m = 1
