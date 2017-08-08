@@ -63,7 +63,7 @@ class TmpDealData():
 #        self.stockdir_1Min = u'F:\股票数据\\个股数据\\1分钟线\\复权\\'
     
     #采取读取配置文件方式    
-    def getAllTypeDir(self,allflag,Adate):
+    def getAllTypeDir(self,allflag,Adate,xdrlist):
         
         #配置文件目录
         
@@ -112,12 +112,12 @@ class TmpDealData():
                     
                     klinetype = dbInfo[dbPos+1:]
                     
-                    self.setTdxData(fkey,dataPath,klinetype,self.fbulidNum,dtable,self.engine,allflag,Adate)
+                    self.setTdxData(fkey,dataPath,klinetype,dtable,allflag,Adate,xdrlist)
                 
         m =11
         
     #构建通达信通用数据录入函数
-    def setTdxData(self,fkey,fdir,klinetype,fnum,dtable,engine,allflag,Adate):
+    def setTdxData(self,fkey,fdir,klinetype,dtable,allflag,Adate,xdrlist):
         
         
         flist = os.listdir(fdir)
@@ -130,24 +130,32 @@ class TmpDealData():
         
         fcount = 0
         
+        stockflag = False
+        
+        fnum   = self.fbulidNum
+        
+        engine = self.engine
+        
+        tmpstr =u'个股数据'
+        
+        tmpos  = fdir.find(tmpstr) 
+        
+        if tmpos!=-1:
+            stockflag = True
+        
         if flist:
            lastfile=flist[-1]
-           
-        
-         
-              
+               
         for fl in  flist:
             
             print fcount
             
-            
-            
-
             fname  = fdir + str(fl)   
             
             fcount = fcount +1 
                         
             flcode = fl.replace('.txt','').replace('SH#','').replace('SZ#','')
+                    
             
             if klinetype=="Day":
                 
@@ -216,8 +224,7 @@ class TmpDealData():
                  if allflag: 
                      
                     Afdata=Afdata.append(fdata)
-                    
-                    
+                                        
                     if fcount==100:
                         k =1
                         
@@ -225,9 +232,14 @@ class TmpDealData():
                         
                         print fdir  
                         
-                        
                         if fcount==fnum:
-                            Afdata.to_sql(dtable,con=engine,if_exists='replace')
+                            sqlstr = "truncate table " + str(dtable)
+                             
+                            try:
+                               pd.read_sql_query(sqlstr,con=engine)
+                            except:
+                               Afdata.to_sql(dtable,con=engine,if_exists='append')
+                            
                         else:
                             Afdata.to_sql(dtable,con=engine,if_exists='append') 
                                 
@@ -240,16 +252,54 @@ class TmpDealData():
                         print '============'
                         
                             
-                        if fcount<=fnum:                
-                           Afdata.to_sql(dtable,con=engine,if_exists='replace')
+                        if fcount<=fnum:
+                            
+                            sqlstr = "truncate table " + str(dtable)
+                            
+                            try:
+                               pd.read_sql_query(sqlstr,con=engine)
+                            except:
+                               Afdata.to_sql(dtable,con=engine,if_exists='append')
+                           
                         else:
-                           Afdata.to_sql(dtable,con=engine,if_exists='append')  
+                            Afdata.to_sql(dtable,con=engine,if_exists='append')  
                             
                         Afdata=pd.DataFrame()
                     
                  else:
                      
-                    tmpdata = fdata[fdata['hq_date']==Adate]  
+                    if fcount==1:
+                       
+                       tdate = Adate.replace('/','-')    
+                       
+                       delstr = "delete from " + str(dtable) +' where hq_date =' +'\''+tdate+'\''
+                        
+                       try:
+                            pd.read_sql_query(delstr,con=engine)
+                            
+                       except:
+                            
+                            print 'delete ' + str(tdate)
+                        
+                     
+                     
+                    if len(xdrlist)>0 and (int(flcode) in xdrlist) and stockflag:
+                        
+                        delstr = "delete from " + str(dtable) +' where hq_code =' +flcode
+                        
+                        try:
+                            pd.read_sql_query(delstr,con=engine)
+                            
+                        except:
+                            
+                            print 'delete ' + str(flcode)
+                           
+                        tmpdata = fdata
+                        
+                    else:
+                                                
+                        tmpdata = fdata[fdata['hq_date']==Adate]  
+                        
                     
                     Afdata=Afdata.append(tmpdata)
                                              
@@ -257,12 +307,19 @@ class TmpDealData():
                        fnum  = 1
                         
                     if fcount % int(fnum)==0:
+                        
+                       print fdir
                             
                        Afdata.to_sql(dtable,con=engine,if_exists='append') 
                                 
                        Afdata=pd.DataFrame()
                         
                     elif fl==lastfile:
+                        
+                         
+                       print fdir
+                        
+                       print '============'
                        
                        Afdata.to_sql(dtable,con=engine,if_exists='append')  
                             
@@ -569,6 +626,10 @@ class PlotToExcel():
             
             #对涨跌幅字典进行排序
             dict_ret= sorted(sortdict.items(), key=lambda d:d[1], reverse = True)
+            
+            
+            gc.collect()
+        
         
         return xdidf_ret,dict_ret,bkStockdict,bkStockChgdict
         
@@ -1182,7 +1243,7 @@ class PlotToExcel():
                                           
                                           if bkstock_len>0:
                                     
-                                              bktiles = str(bkstockcode)+'('+bkstockname+')'
+                                              bktiles = bkstockname+'('+str(bkstockcode)+')'
                                                
                                               shift =11
                                                
@@ -1860,19 +1921,11 @@ if '__main__'==__name__:
     
     lineDir = '\\BoardIndex\\config\\通达信行业.txt'
     
+    XDRDir = '\\BoardIndex\\config\\当日除权.txt'
+    
     Adate = datetime.now().strftime('%Y/%m/%d')
      
-    dataFlag  = True
-    #调用临时入库程序，完成补齐日线数据   
-    if dataFlag:
-        
-        allflag = False
-        
-        allflag = True        
-        
-        tdd.getAllTypeDir(allflag,Adate)
-    
-    
+   
     #配置文件目录
         
     pwd   =  os.getcwd()
@@ -1880,14 +1933,38 @@ if '__main__'==__name__:
     fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
         
     dbfname  = fpwd + lineDir
+    
+    xdrname  = fpwd + XDRDir
         
     fheader = ['Lcode','LName','Line','Linexf']
-            
+    
+    xdrheader =['Scode','Sname','xdr']
     
     #生成目录字典
     fdata=pd.read_table(dbfname.decode('utf-8'),header=0,names=fheader,delimiter=',')
     
+    xdrdata = pd.read_table(xdrname.decode('utf-8'),header=0,names=xdrheader,delimiter=',')
     #生成行业指数
+    
+    dataFlag  = True
+    
+    #dataFlag  = False
+    #调用临时入库程序，完成补齐日线数据   
+    if dataFlag:
+        
+        allflag = False
+        
+        #allflag = True        
+        
+        #Adate='2017/08/07'
+        
+        #需加入list
+        
+        xdrlist = xdrdata['Scode'].tolist()
+        
+        tdd.getAllTypeDir(allflag,Adate,xdrlist)
+    
+    
 
     fxflinegroup = fdata.groupby('Linexf')
         
@@ -1905,9 +1982,9 @@ if '__main__'==__name__:
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-07-24", "%Y-%m-%d")
     
-    end_date   = datetime.strptime("2017-08-03", "%Y-%m-%d")
+    end_date   = datetime.strptime("2017-08-08", "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     
@@ -1918,9 +1995,9 @@ if '__main__'==__name__:
     KlineType ='D'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-07-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-05-01", "%Y-%m-%d")
     
-    end_date   = datetime.strptime("2017-08-02", "%Y-%m-%d")
+    end_date   = datetime.strptime("2017-08-08", "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     

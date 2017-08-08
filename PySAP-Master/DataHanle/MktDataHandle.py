@@ -368,7 +368,7 @@ class MktStockHandle:
         # 处理5分钟数据       
         if speriod=="5M":
             
-           mkquerysql = "select * from hstockquotationfive as hiq where hiq.hq_code " + securityID
+           mkquerysql = "select hiq.index,hiq.hq_code,hiq.hq_date,hiq.hq_time,hiq.hq_close,hiq.hq_vol,hiq.hq_amo from hstockquotationfive as hiq where hiq.hq_code " + securityID
            
            strsql = " and UNIX_TIMESTAMP(hiq.index)>="+strstart +" and UNIX_TIMESTAMP(hiq.index)<=" +strend 
            
