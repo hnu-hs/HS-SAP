@@ -279,7 +279,7 @@ class TmpDealData():
                             
                        except:
                             
-                            print 'delete ' + str(tdate)
+                            print delstr
                         
                      
                      
@@ -559,6 +559,8 @@ class PlotToExcel():
                 
                 if bkdict.has_key(dfdict):
                    hq_name = bkdict[dfdict] 
+                   
+                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
                 
                 tmpdf['hq_name']  = hq_name
                 
@@ -634,11 +636,16 @@ class PlotToExcel():
         return xdidf_ret,dict_ret,bkStockdict,bkStockChgdict
         
     
-    def bulidChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len2,shift2,style):
+    def bulidChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len2,shift2,style,KlineType):
         
         bk_chart = wbk.add_chart({'type': 'line'})
                
         bk_chart.set_style(4)
+        
+        if KlineType=='5M':
+           interval_unit = 48
+        else:           
+           interval_unit = 5  
        
         #向图表添加数据 
         
@@ -707,7 +714,7 @@ class PlotToExcel():
                                    
         bk_chart.set_x_axis({'name_font': {'size': 10, 'bold': True},
                             'label_position': 'low',
-                            'interval_unit': 5
+                            'interval_unit': interval_unit
                     
                           })
                         
@@ -726,7 +733,7 @@ class PlotToExcel():
     
      
     
-    def bulidALLChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,bkCount,style):
+    def bulidALLChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,shift2,bkCount,style,KlineType):
         
         bk_chart = wbk.add_chart({'type': 'line'})
                
@@ -735,6 +742,11 @@ class PlotToExcel():
         # CD6600 橙色，C1C1C1紫色，556B2F草绿色，696969灰色，
         colorlist =['CD6600','0F0F0F','FF0000','556B2F','FFD700']
         
+        
+        if KlineType=='5M':
+           interval_unit = 48
+        else:           
+           interval_unit = 5  
         
         #基准无需变动
         
@@ -786,7 +798,7 @@ class PlotToExcel():
                                    
         bk_chart.set_x_axis({'name_font': {'size': 10, 'bold': True},
                             'label_position': 'low',
-                            'interval_unit': 5
+                            'interval_unit': interval_unit
                     
                           })
                         
@@ -803,7 +815,7 @@ class PlotToExcel():
         
         return bk_chart    
         
-    def bulidALLChart_XF(self,wbk,bkXY_dict,flcode,fxflinecodes,bktile,idxstr,shift,shift2):
+    def bulidALLChart_XF(self,wbk,bkXY_dict,flcode,fxflinecodes,bktile,idxstr,shift,shift2,KlineType):
         
         
         bk_chart = wbk.add_chart({'type': 'line'})
@@ -812,6 +824,11 @@ class PlotToExcel():
         
         # CD6600 橙色，C1C1C1紫色，556B2F草绿色，696969灰色，
         colorlist =['CD6600','0F0F0F','FF0000','556B2F','FFD700','C1C1C1','556B2F','696969']
+        
+        if KlineType=='5M':
+           interval_unit = 48
+        else:           
+           interval_unit = 5  
         
         icount  = 0 
         
@@ -885,7 +902,7 @@ class PlotToExcel():
                                    
         bk_chart.set_x_axis({'name_font': {'size': 10, 'bold': True},
                             'label_position': 'low',
-                            'interval_unit': 5
+                            'interval_unit': interval_unit
                     
                           })
                         
@@ -904,7 +921,7 @@ class PlotToExcel():
     
     #构建指数excel构架，,data_left,pic_lef,data_top,pic_top 分别代表数据，图像的 x，y坐标
     
-    def bulidExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict,exlnum,bkdNum):      
+    def bulidExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict,exlnum,bkdNum,KlineType):      
            
         #取出排名指数,写入到excel文件中
         sdata_left   = data_left + len(xdiColumns)+2
@@ -939,6 +956,8 @@ class PlotToExcel():
         for dflist in  bkidf_list:
            
            print dflist[0]
+           
+           print bkcount
            
            sdataXY_list = []
                       
@@ -1066,7 +1085,7 @@ class PlotToExcel():
                
                style   = 1
                
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style)
+               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style,KlineType)
                     
                #画出双轴对比图
                
@@ -1087,7 +1106,7 @@ class PlotToExcel():
                
                style   = 2
                
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style)
+               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style,KlineType)
                     
                #画出双轴对比图
                
@@ -1121,7 +1140,11 @@ class PlotToExcel():
                       
                    else:
                       
-                      bknamelist.append(bkname)     
+                      bkcodelist.append(dflist[0])
+                      
+                      bknamelist.append(bkname) 
+                      
+                      bkdict[dflist[0]] = bkname
                    
                    #如果不为0，加入名称       
                    
@@ -1187,7 +1210,7 @@ class PlotToExcel():
                                
                                bkdata_left2 = 0 
                                                                                   
-                               bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style)
+                               bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style,KlineType)
                                
                                #画出双轴对比图
                                                           
@@ -1208,7 +1231,7 @@ class PlotToExcel():
                                
                                style   = 2
                                                                                   
-                               bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style)
+                               bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style,KlineType)
                                     
                                #画出双轴对比图
                                
@@ -1253,7 +1276,7 @@ class PlotToExcel():
                                                
                                               bkdata_left2 = 0 
                                               
-                                              bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style)
+                                              bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style,KlineType)
                                                                          
                                               tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                                               
@@ -1266,7 +1289,7 @@ class PlotToExcel():
                                                     
                                               shift2  = 12
                                                                                                   
-                                              bk_chart = self.bulidChart(wbk,bkstock_X,bkstock_Y,bkstock_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style)
+                                              bk_chart = self.bulidChart(wbk,bkstock_X,bkstock_Y,bkstock_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style,KlineType)
                                                     
                                               #画出双轴对比图
                                                
@@ -1386,8 +1409,7 @@ class PlotToExcel():
                    
                    style   = 1
                    
-                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktiles,idxstr,shift,data_top2,data_left2,shift2,5,style)
-                        
+                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktiles,idxstr,shift,data_top2,data_left2,shift2,5,style,KlineType)
                    #画出双轴对比图
                    
                    QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
@@ -1407,7 +1429,7 @@ class PlotToExcel():
                    
                    style  =2
                                       
-                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktiles,idxstr,shift,data_top2,data_left2,shift2,5,style)
+                   bk_chart = self.bulidALLChart(wbk,dstart_top,data_left,bkidf_len,bktiles,idxstr,shift,data_top2,data_left2,shift2,5,style,KlineType)
                         
                    #画出双轴对比图
                    
@@ -1458,7 +1480,7 @@ class PlotToExcel():
                    
                   shift2  = 6
                    
-                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2)
+                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2,KlineType)
                         
                    #画出双轴对比图
                    
@@ -1473,7 +1495,7 @@ class PlotToExcel():
                    
                   shift2  = 13
                          
-                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2)
+                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2,KlineType)
                         
                   #画出双轴对比图
                    
@@ -1634,11 +1656,8 @@ class PlotToExcel():
               
             if len(xdhead_idf)>0:
                 #数据分组        
-                
-                if exlnum==1:
-                    mm =1
-                
-                (wbk,pic_left,bkdataXY_dict,bkXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict,exlnum,bkdNum)
+                                
+                (wbk,pic_left,bkdataXY_dict,bkXY_dict)  = self.bulidExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict,exlnum,bkdNum,KlineType)
                 
                 data_left = data_left+xdiColumnlens+2
       
@@ -1982,9 +2001,9 @@ if '__main__'==__name__:
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-07-24", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
     
-    end_date   = datetime.strptime("2017-08-08", "%Y-%m-%d")
+    end_date   = datetime.strptime("2017-08-10", "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     
@@ -1995,9 +2014,9 @@ if '__main__'==__name__:
     KlineType ='D'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-05-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-01-01", "%Y-%m-%d")
     
-    end_date   = datetime.strptime("2017-08-08", "%Y-%m-%d")
+    end_date   = datetime.strptime("2017-08-10", "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     
@@ -2031,9 +2050,15 @@ if '__main__'==__name__:
     bkdict[benchmarkIndex]=benchmarkName
     
     bkxfdf = bkxfdf.append(bkxfdf_xf, ignore_index=True)
+    
+    
       
     
-    bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)    
+    bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)
+    
+    bkxfdf['board_name'] = (bkxfdf['board_name'].str.replace(u'通达信行业-','')).str.replace(u'通达信细分行业-','')
+
+    #bkxfdf[['board_name']]= bkxfdf[['board_name']].str.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
     
     for kdict in KlineDict:
        #指数分类对比图
