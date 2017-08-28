@@ -103,12 +103,11 @@ class TmpDealData():
                                                     
                     klinetype = dpath[dbPos+1:]
                                         
-                    self.setTdxData(fkey,dataPath,klinetype,allflag,Adate,xdrlist)
-                
-        m =11
+                    self.setTdxData(dataPath,klinetype,allflag,Adate,xdrlist)
+            
         
     #构建通达信通用数据录入函数
-    def setTdxData(self,fkey,fdir,klinetype,allflag,Adate,xdrlist):
+    def setTdxData(self,fdir,klinetype,allflag,Adate,xdrlist):
                 
         flist = os.listdir(fdir)
         
@@ -206,6 +205,16 @@ class TmpDealData():
             
             fdList = dataTDict[dtdict]
             
+            dbtable = dtdict
+            
+            stockflag = False 
+            
+            if dbtable in stockdblist:
+                stockflag = True 
+                
+            if fdList:
+              lastfile=fdList[-1]
+            
             fcount = 0
             
             if allflag:
@@ -279,14 +288,15 @@ class TmpDealData():
                        fdata['hq_amo'] = tmp.round(3)
                             
                     if 'hq_vol' in fdcolumnsIndex:
+                        
                             
-                       if fkey!='Stock':                       
+                      if not stockflag:                       
                            
                            tmp  = fdata['hq_vol'] /10000
 
                            fdata['hq_vol'] = tmp.round(3)
                          
-                       else:
+                      else:
                            tmp  = fdata['hq_vol'] /1000000
                             
                            fdata['hq_vol'] = tmp.round(3)
@@ -310,7 +320,7 @@ class TmpDealData():
                                 
                         Afdata=pd.DataFrame()
                         
-                    elif fl==lastfile:
+                    elif fdl==lastfile:
                         
                         print fdir
                         
@@ -329,11 +339,11 @@ class TmpDealData():
                        delstr = "delete from " + str(dbtable) +' where hq_date =' +'\''+tdate+'\''
                         
                        try:
-                            pd.read_sql_query(delstr,con=engine)
+                            pd.read_sql_query(delstr,con=engine)     
                             
                        except:
-                            
-                            print delstr
+                           
+                           print delstr
                             
                     if dbtable in stockdblist:
                         stockflag = True                                                               
@@ -369,7 +379,7 @@ class TmpDealData():
                                 
                        Afdata=pd.DataFrame()
                         
-                    elif fl==lastfile:
+                    elif fdl==lastfile:
                         
                          
                        print fdir
@@ -519,32 +529,42 @@ class PlotToExcel():
         return xdidf_ret,stockChgDict
         
     #获取指数相对强弱，相对量能
-    def getIndexXdQr(self,bmidf,bkidf,bkdict,bkxfdf,stockdf):
+    def getIndexStockXdQr(self,bmidf,bkidf,bkdict,bkxfdf,stockdf):
         
         xdidf_ret = pd.DataFrame()
         
         dict_ret  ={}  
         
+        sortdict = {}
+            
+        bkStockdict ={}           
+            
+        bkStockChgdict ={}
+        
+        bkidf_dict={}
+        
         stockdf_len = len(stockdf)
         
-        Mstockdf = pd.merge(stockdf,bkxfdf,left_on='hq_code',right_on='stock_id')
-        
-        stockdf  = pd.DataFrame()
-        #对板块个股进行分类
-                
-        Mistockdf_group = Mstockdf.groupby('board_id')
-        
-                
-        #板块个股关联        
-        bkidf_dict = dict(list(Mistockdf_group))
-        
-        Mstockdf  = pd.DataFrame()
-        
-        gc.collect()
+        if stockdf_len>0:
+            
+            Mstockdf = pd.merge(stockdf,bkxfdf,left_on='hq_code',right_on='stock_id')
+            
+            stockdf  = pd.DataFrame()
+            #对板块个股进行分类
+                    
+            Mistockdf_group = Mstockdf.groupby('board_id')
+            
+                    
+            #板块个股关联        
+            bkidf_dict = dict(list(Mistockdf_group))
+            
+            Mstockdf  = pd.DataFrame()
+            
+            gc.collect()
         
         #如果板块有数据，计算处理
         
-        if len(bkidf)>0 and len(bmidf)>0 and stockdf_len>0 :
+        if len(bkidf)>0 and len(bmidf)>0  :
             
             
             #指数数据分组        
@@ -568,11 +588,6 @@ class PlotToExcel():
             
             dictcount = 0 
             
-            sortdict = {}
-            
-            bkStockdict ={}           
-            
-            bkStockChgdict ={}
                 
             #取出排名指数
             for dfdict in  hkidf_dict:
@@ -663,7 +678,7 @@ class PlotToExcel():
                 bkidf_tmp['index'] = bkidf_tmp.index
                 
                 #找到指数对应股票的行情数据
-                if bkidf_dict.has_key(str(dfdict)):
+                if bkidf_dict.has_key(str(dfdict)) and stockdf_len>0:
                     
                    bkitem  = bkidf_dict[str(dfdict)]
                    
@@ -694,7 +709,151 @@ class PlotToExcel():
         
         
         return xdidf_ret,dict_ret,bkStockdict,bkStockChgdict
+      
+    #获取指数相对强弱，相对量能
+    def getIndexXdQr(self,bmidf,bkidf,bkdict):
         
+        xdidf_ret = pd.DataFrame()
+        
+        dict_ret  ={}  
+        
+        sortdict = {}
+            
+        #如果板块有数据，计算处理
+        
+        if len(bkidf)>0 and len(bmidf)>0  :
+            
+            
+            #指数数据分组        
+            hkidf_group = bkidf.groupby('hq_code')
+            
+#            #股票数据分组
+#            stockdf_group = stockdf.groupby('hq_code')
+#                        
+#            #生成指数dict        
+            hkidf_dict = dict(list(hkidf_group))
+#            
+#            #生成股票dict            
+#            stockdf_dict = dict(list(stockdf_group))
+#                                              
+            #生成基准指数累计涨跌幅度
+            xdhidf   = self.getIndexOrStockChg(bmidf)
+            
+            bmi_len   = len(bmidf)
+            
+            xdhindex  = xdhidf.index
+            
+            dictcount = 0 
+            
+                
+            #取出排名指数
+            for dfdict in  hkidf_dict:
+                
+                print dfdict
+                                
+                dictcount  = dictcount +1
+                
+                #取出每个指数的行情数据
+                hidf_item  = hkidf_dict[dfdict]
+                
+                
+                tmpidf     = xdhidf.copy()
+                
+                hidf_ret   = self.getIndexOrStockChg(hidf_item)
+                
+                hidf_ret   = hidf_ret[1:]
+                
+                hidf_len   = len(hidf_item)
+                
+                if hidf_len!=bmi_len:
+                    hidf_item = hidf_item.reindex(xdhindex)
+               
+                tmpdf      = hidf_item.copy()
+               
+                tmpidf.set_index(['index'], inplace = True)
+                
+                tmpdf.set_index(['index'], inplace = True)
+                
+                tmpdf.loc[:,['hq_code']]  = str(dfdict)
+                
+                tmpdf['hq_bmcode']  = benchmarkIndex 
+                
+                hq_bmname =''
+                
+                if bkdict.has_key(str(benchmarkIndex)):
+                   hq_bmname = bkdict[str(benchmarkIndex)] 
+                
+                tmpdf['hq_bmname']  = hq_bmname
+                
+                
+                hq_name =''
+                
+                if bkdict.has_key(dfdict)  :
+                   
+                   hq_name = bkdict[dfdict] 
+                   
+                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
+                
+                
+                tmpdf['hq_name']  = hq_name
+                
+                
+                tmpdf.loc[:,['hq_chg']]   = tmpdf['hq_allchg']
+                
+                tmpdf.loc[:,['hq_allchg']]  = tmpdf['hq_allchg']- tmpidf['hq_allchg']
+                
+                tmpidf.loc[:,['hq_vol']] = np.where(tmpidf['hq_vol']==0,np.where(tmpdf['hq_vol']==0,-1,-tmpdf['hq_vol']),tmpidf['hq_vol'])
+                
+                tmpdf['hq_xdvol']  = (tmpdf['hq_vol']/tmpidf['hq_allvol']*100).round(3)
+                
+                tmpdf['hq_xdvol'] = np.where(tmpdf['hq_xdvol']==np.inf, -1, tmpdf['hq_xdvol'])
+                
+                tmpcolums = tmpdf.columns
+                
+                if 'hq_amo' in tmpcolums:                    
+                    tmpdf['hq_xdamo']  = (tmpdf['hq_amo']/tmpidf['hq_allamo']*100).round(3)
+                    
+                    tmpdf['hq_xdamo'] = np.where(tmpdf['hq_xdamo']==np.inf, -1, tmpdf['hq_xdamo'])
+                
+                tmpdf = tmpdf[1:]
+                
+                if dictcount<=1:
+                    xdhead_array = tmpdf.values
+                else:
+                    xdhead_array = np.concatenate([xdhead_array,tmpdf.values],axis=0)
+                
+                
+                #加入涨跌幅的排名
+                
+                hichg = hidf_ret['hq_allchg'].tolist()
+                
+                if len(hichg)>0:
+                   #得到最后一个数据 
+                   sortdict[dfdict] =  hichg.pop()
+                
+                bkidf_tmp =  tmpdf[['hq_code','hq_date','hq_time','hq_chg','hq_allchg','hq_vol','hq_amo']]
+                
+                
+                
+                bkidf_tmp.rename(columns={'hq_code': 'bhq_code', 'hq_date': 'bhq_date', 'hq_time': 'bhq_time', 'hq_chg': 'bhq_chg', 'hq_allchg': 'bhq_allchg', 'hq_vol': 'bhq_vol', 'hq_amo': 'bhq_amo'}, inplace=True) 
+                
+                bkidf_tmp['index'] = bkidf_tmp.index
+                
+                
+            xdhead_columnus = tmpdf.columns     
+           
+            xdhead_idf = pd.DataFrame(xdhead_array,columns=xdhead_columnus)
+            
+            if 'hq_xdamo' in xdhead_columnus:
+                xdidf_ret  = xdhead_idf[['hq_code','hq_name','hq_date','hq_time','hq_bmcode','hq_bmname','hq_close','hq_preclose','hq_vol','hq_amo','hq_chg','hq_allchg','hq_xdvol','hq_xdamo']]
+            
+            #对涨跌幅字典进行排序
+            dict_ret= sorted(sortdict.items(), key=lambda d:d[1], reverse = True)
+                        
+            gc.collect()
+        
+        return xdidf_ret,dict_ret
+            
     
     def bulidChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len2,shift2,style,KlineType):
         
@@ -1370,28 +1529,34 @@ class PlotToExcel():
         return wbk,pic_lef,bkdataXY_dict,bkXY_dict
         
         
-    def bulidAllExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top,fxflinedict):      
+    def bulidAllExcelPic(self,bkcodestr,AbkXY_dict,Abkdict,wbk,QR_Sheet,IData_Sheet,xdiColumns,fxflinedict):      
            
         #取出排名指数,写入到excel文件中
+           
+        pic_left  = 0    #图像起始列 
+                
+        pic_top   = 2    #图像起始行
         
         bkXY_dict={}        
         
         bkcount = 0
+        
+        bkidf_list =bkcodestr.split(',')
            
         if len(bkidf_list)>0:
             lastfile = bkidf_list[-1]
            
         for dflist in  bkidf_list:
-            
-           if len(dflist)==2:
+                       
+           bkidf_code  = dflist
                
-               bkidf_code  = dflist[0]
+           bkcount  = bkcount +1            
+           
+           
                
-               bkcount  = bkcount +1            
+           bkidf_item  = dflist[1]
                
-               bkidf_item  = dflist[1]
-               
-               bkidf_item = bkidf_item.dropna(how='any')
+           bkidf_item = bkidf_item.dropna(how='any')
                
                bkhead = bkidf_item.head(1)
                
@@ -1424,29 +1589,7 @@ class PlotToExcel():
                      
                   else:
                      bktiles = bktiles + ',' +bkname  
-               
-               bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
-               
-               bkidf_len   = len(bkidf_item)
-               
-               
-               tmpbkist = [bkidf_code,data_top,data_left,bkidf_len]
-               
-               bkXY_dict[bkidf_code] = tmpbkist
-               
-               #写入头
-               IData_Sheet.write_row(data_top, data_left,xdiColumns)
-               
-               #写入内容
-                   
-               for row in range(0,bkidf_len):   
-                  #for col in range(left,len(fields)+left):  
-                  
-                  tmplist  = bkidf_item[row:row+1].values.tolist()
-                                              
-                  datalist = tmplist[0]
-                                                  
-                  IData_Sheet.write_row(data_top+row+1, data_left,datalist)
+                           
                
                data_top+=bkidf_len +2
                
@@ -1727,15 +1870,12 @@ class PlotToExcel():
             wbk.close()
         
      
-    def bulidAllIndexExcelFrame(self,bmidf,xdtmp_idf,KlineType,fxflinedict):
+    def bulidAllIndexExcelFrame(self,bmidf,axdtmp_idf,bkcodestr,xdscale_idf,Abkdict,KlineType,fxflinedict):
                 
         data_left = 0    #数据起始列
-        
-        pic_left  = 0    #图像起始列 
-        
+
         data_top  = 0    #数据起始行
         
-        pic_top   = 2    #图像起始行
         
         
         pwd   =  os.getcwd()
@@ -1779,6 +1919,7 @@ class PlotToExcel():
         QR_Sheet.merge_range(0,xdiColumnlens+2,1,2*xdiColumnlens+2,headvol,blue)               
         QR_Sheet.set_column(2*xdiColumnlens+3,2*xdiColumnlens+3,0.3,JG)
                
+        bmidf.fillna(method='bfill',inplace=True)
         
         #基准数据写入数据sheet中
         if len(bmidf)>0:
@@ -1794,16 +1935,54 @@ class PlotToExcel():
             
             data_left = data_left +len(bmiColumns) +2
         
-        if len(xdtmp_idf)>0:
+        xdscale_idf.fillna(method='bfill',inplace=True)
+        #规模指数数据写入数据sheet中
+        if len(xdscale_idf)>0:
+            scaleidf_group = xdscale_idf.groupby('hq_code')
+    
+            scaleidf_list = list(scaleidf_group)
             
-            #数据分组        
-            xdtmp_group = xdtmp_idf.groupby('hq_code',sort=False)
+            #scaleColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
             
-            bkidf_list= list(xdtmp_group)
-                        
-            (wbk,pic_left)  = self.bulidAllExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,fxflinedict)
+            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
+                  
+            (IData_Sheet,scaleXY_dict) = self.bulidIndexDataToExcel(scaleidf_list,IData_Sheet,xdiColumns,data_left,data_top)
             
-            data_left = data_left+xdiColumnlens+2
+            data_left = data_left +len(xdiColumns) +2
+            
+            
+        axdtmp_idf.fillna(method='bfill',inplace=True)
+        #规模指数数据写入数据sheet中
+        if len(axdtmp_idf)>0:
+            
+            axdtmp_group = axdtmp_idf.groupby('hq_code')
+    
+            abkidf_list = list(axdtmp_group)
+            
+            #abkColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
+            
+            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
+                  
+            (IData_Sheet,AbkXY_dict) = self.bulidIndexDataToExcel(abkidf_list,IData_Sheet,xdiColumns,data_left,data_top)
+            
+            data_left = data_left +len(xdiColumns) +2
+            
+                
+            wbk  = self.bulidAllExcelPic(bkcodestr,AbkXY_dict,Abkdict,wbk,QR_Sheet,IData_Sheet,xdiColumns,fxflinedict)
+            
+#        
+#        xdtmp_idf.fillna(method='bfill',inplace=True)
+#        
+#        if len(xdtmp_idf)>0:
+#            
+#            #数据分组        
+#            xdtmp_group = xdtmp_idf.groupby('hq_code',sort=False)
+#            
+#            bkidf_list= list(xdtmp_group)
+#                        
+#            (wbk,pic_left)  = self.bulidAllExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,fxflinedict)
+#            
+#            data_left = data_left+xdiColumnlens+2
                                        
         wbk.close()
 
@@ -1986,9 +2165,140 @@ class PlotToExcel():
         #画出指数排名图形
         self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType)
           
+ 
+    #excel中plot相对指数强弱图形
+    def PlotAllIndexPicToExcel(self,timeTuple,KlineType,indexTuple,bklineTuple,AbklineTuple,fxflinedict):
         
-        kk =1 
+        startDate = timeTuple[0]        
+        endDate   = timeTuple[1]      
         
+        benchmarkIndex = indexTuple[0]        
+        #获取所有市场数据
+        allMarketIndex = indexTuple[1]
+        
+        #获取规模指数
+        
+        scaleIndex  = indexTuple[2]         
+        scaleDict  = indexTuple[3]
+        
+        bkdict =bklineTuple[2]
+        bkcodestr = bklineTuple[3]
+        
+        Abkdict = AbklineTuple[2]        
+        Abkcodestr = AbklineTuple[3]
+        
+        indexType = 'BoardIndex'
+#        
+#        #获取指数排名数据        
+#        hidf  =  self.getPlotIndexData(bkcodestr,startDate,endDate,KlineType,indexType)
+        
+        ahidf =  self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
+        
+        indexType = 'ScaleIndex'
+        
+        #获取基准指数数据
+        bmidf =  self.getPlotIndexData(benchmarkIndex,startDate,endDate,KlineType,indexType)
+        
+        #获取所有指数成交量，成交额数据        
+        allrawdf  =  self.getPlotIndexData(allMarketIndex,startDate,endDate,KlineType,indexType)
+        
+        #获取规模指数数据
+        scaleidf  = self.getPlotIndexData(scaleIndex,startDate,endDate,KlineType,indexType)
+                
+        #计算所有
+        if KlineType =='D':
+                
+            Salldf     =   allrawdf.groupby('hq_date').agg(
+                          {'hq_vol':'sum',
+                           'hq_amo':'sum'                       
+                          })
+            
+            Salldf['hq_date'] = Salldf.index
+            
+            Salldf = Salldf.set_index(bmidf.index)
+            
+        else:
+            
+            Salldf     =   allrawdf.groupby('index').agg(
+                          {'hq_vol':'sum',
+                           'hq_amo':'sum'                       
+                          })
+            
+            Salldf['hq_date'] = Salldf.index
+            
+            Salldf = Salldf.set_index(bmidf.index)
+        
+                        
+        bmidf['hq_allvol'] = Salldf['hq_vol']
+        
+        bmidf['hq_allamo'] = Salldf['hq_amo']
+        
+        if 'hq_time' not in ahidf.columns:
+            ahidf['hq_time']  = '00:00:00'
+#        
+#        if 'hq_time' not in hidf.columns:
+#            hidf['hq_time']  = '00:00:00'
+            
+        if 'hq_time' not in bmidf.columns:
+            bmidf['hq_time']  = '00:00:00'
+                
+        
+        if 'hq_time' not in allrawdf.columns:
+            allrawdf['hq_time']  = '00:00:00'
+                  
+        if 'hq_time' not in scaleidf.columns:
+            scaleidf['hq_time']  = '00:00:00'
+        
+        bmidf['hq_time'] = bmidf['hq_time'].astype('str')
+        
+         #获取所有指数排名数据(所有通达信行业) 
+        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,ahidf,Abkdict)
+#        
+#        #获取所有指数排名数据(通达信行业) 
+#        (xdLine_idf,lineSortlist) = self.getIndexXdQr(bmidf,hidf,bkdict)         
+        
+        #获取所有规模指数排名数据
+        (xdscale_idf,scaleSortlist) = self.getIndexXdQr(bmidf,scaleidf,scaleDict)     
+       
+        #处理excel中的指数数据
+        ebmidf  = self.getExcelIndexData(bmidf,bkdict)        
+        
+        #获取前几，后几排名数据     
+        (axdtmp_idf,axdhead_idf) =self.getSortedIndexdf(AxdLine_idf,AlineSortlist)
+        
+#        #获取前几，后几排名数据     
+#        (xdtmp_idf,xdhead_idf) =self.getSortedIndexdf(xdLine_idf,lineSortlist)
+#        
+        #获取前几，后几排名数据(规模指数)     
+        (xdscale_idf,xdheadscale_idf) =self.getSortedIndexdf(xdscale_idf,scaleSortlist)
+            
+        #画出指数排名图形（所有图形）
+        self.bulidAllIndexExcelFrame(ebmidf,axdtmp_idf,bkcodestr,xdscale_idf,Abkdict,KlineType,fxflinedict)
+                
+        #画出指数排名图形（所有图形）
+        #self.bulidAllIndexExcelFrame(ebmidf,xdscale_idf,KlineType,fxflinedict)
+        
+        #画出指数排名图形
+        #self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType)
+      
+    #excel中plot相对指数强弱图形
+    def dealBoardInfo(self,bkLinedf,bkxfdf,benchmarkName):
+        #通达信行业代码    
+        bkcodes = bkLinedf['bz_indexcode'].astype('str')
+                    
+        bkcodestr = ','.join(bkcodes)
+        
+        bkdict = bkLinedf.set_index('bz_indexcode')['bz_name'].to_dict()
+            
+        bkdict[benchmarkIndex]=benchmarkName
+        
+        bkxfdf = bkxfdf.append(bkxfdf_xf, ignore_index=True)
+             
+        bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)
+        
+        bkxfdf['board_name'] = (bkxfdf['board_name'].str.replace(u'通达信行业-','')).str.replace(u'通达信细分行业-','')
+        
+        return bkdict,bkcodestr,bkxfdf
         
 if '__main__'==__name__:  
     
@@ -1997,8 +2307,7 @@ if '__main__'==__name__:
     tdd = TmpDealData()    
     
     KlineDict ={}
-    
-    
+        
     dataFlag  = False
     
     lineDir = '\\BoardIndex\\config\\通达信行业.txt'
@@ -2006,8 +2315,7 @@ if '__main__'==__name__:
     XDRDir = '\\BoardIndex\\config\\当日除权.txt'
     
     Adate = datetime.now().strftime('%Y/%m/%d')
-     
-   
+        
     #配置文件目录
         
     pwd   =  os.getcwd()
@@ -2030,21 +2338,23 @@ if '__main__'==__name__:
     
     dataFlag  = True
     
-    #dataFlag  = False
+    dataFlag  = False
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         
         allflag = False
         
-        #allflag = True        
+        allflag = True        
         
-        #Adate='2017/08/07'
+        Adate='2017/08/25'
         
         #需加入list
         
         xdrlist = xdrdata['Scode'].tolist()
         
         tdd.getAllTypeDir(allflag,Adate,xdrlist)
+        
+        allflag = True   
    
         if allflag:
             
@@ -2055,7 +2365,7 @@ if '__main__'==__name__:
     
     Adate = datetime.now().strftime('%Y-%m-%d')
     
-    Adate='2017-08-21'
+    #Adate='2017-08-21'
 
     fxflinegroup = fdata.groupby('Linexf')
         
@@ -2066,35 +2376,46 @@ if '__main__'==__name__:
         
     benchmarkName  =u'国证A指'
     
-    #全市场指数（000002 A股指数，399107深圳A指数）
+    #全市场指数（000002 A股指数，399107深圳A指）
     allMarketIndex = '000002,399107'
+    
+    #规模指数(000002 A股指数，399001深圳成指，399101中小板指，399102创业板，000300沪深300，000016上证50，000905中证500)    
+    scaleIndex = '000002,399107,399101,399102,000300,000016,000905'
+    
+    scaleDict = { 2:u'A股指数',
+                 399107:u'深圳A指',
+                 399101:u'中小板指',
+                 399102:u'创业板指',
+                 300:u'沪深300',
+                 16:u'上证50',
+                 905:u'中证500',
+                 benchmarkIndex:benchmarkName
+                 }
         
     #K线类型    
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-08-03", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-08-21", "%Y-%m-%d")
     
     end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     
-    
     KlineDict[KlineType] = timetuple
-    
-    
-    #K线类型    
-    KlineType ='D'
-        
-    #获取数据起始时间
-    start_date = datetime.strptime("2016-01-01", "%Y-%m-%d")
-    
-    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
-    
-    timetuple   =(start_date,end_date)
-    
-    
-    KlineDict[KlineType] = timetuple
+#        
+#    #K线类型    
+#    KlineType ='D'
+#        
+#    #获取数据起始时间
+#    start_date = datetime.strptime("2016-01-01", "%Y-%m-%d")
+#    
+#    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
+#    
+#    timetuple   =(start_date,end_date)
+#    
+#    
+#    KlineDict[KlineType] = timetuple
         
 #    #获取所有板块数据
     mktindex  = pte.mktindex
@@ -2107,43 +2428,42 @@ if '__main__'==__name__:
     #通达信细分行业
     (bkLinedf_xf,bkxfdf_xf) = mktindex.MktIndexToStocksClassify('80202')
     
-    bkLinedf = bkLinedf.append(bkLinedf_xf, ignore_index=True)
-    
-    #通达信行业代码    
-    bkcodes = bkLinedf['bz_indexcode'].astype('str')
-    
-    bkcodelist = bkcodes.tolist()    
+    #通达信所有板块
+    AbkLinedf = bkLinedf.append(bkLinedf_xf, ignore_index=True)
         
-    bkcodestr = ','.join(bkcodes)
+    Abkxfdf = bkxfdf.append(bkxfdf_xf, ignore_index=True)
+    
+    (Abkdict,Abkcodestr,Abkxfdf) = pte.dealBoardInfo(AbkLinedf,Abkxfdf,benchmarkName)
+    
+    (bkdict,bkcodestr,bkxfdf) = pte.dealBoardInfo(bkLinedf,bkxfdf,benchmarkName)
+    
+    (xfbkdict,xfbkcodestr,bkxfdf_xf) = pte.dealBoardInfo(bkLinedf_xf,bkxfdf_xf,benchmarkName)
+    
+    #通达信行业tuple
+    bklineTuple = (bkLinedf,bkxfdf,bkdict,bkcodestr) 
+    
+    #通达信细分行业tuple
+    bkxflineTuple = (bkLinedf_xf,bkxfdf_xf,xfbkdict,xfbkcodestr) 
+    
+    #通达信所有行业tuple
+    AbklineTuple = (AbkLinedf,Abkxfdf,Abkdict,Abkcodestr) 
+    
+    #所有指数tuple
+    indexTuple =(benchmarkIndex,allMarketIndex,scaleIndex,scaleDict)
     
     
-    bkdict = bkLinedf.set_index('bz_indexcode')['bz_name'].to_dict()
-        
-    
-    bkdict[benchmarkIndex]=benchmarkName
-    
-    bkxfdf = bkxfdf.append(bkxfdf_xf, ignore_index=True)
-    
-    
-      
-    
-    bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)
-    
-    bkxfdf['board_name'] = (bkxfdf['board_name'].str.replace(u'通达信行业-','')).str.replace(u'通达信细分行业-','')
-
-    #bkxfdf[['board_name']]= bkxfdf[['board_name']].str.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
     
     for kdict in KlineDict:
        #指数分类对比图
        KlineType = kdict
        
-       tkeytuple = KlineDict[KlineType] 
+       timeTuple = KlineDict[KlineType] 
+             
+       #plot所有通达信指数，规模指数，通达信细分指数
+       pte.PlotAllIndexPicToExcel(timeTuple,KlineType,indexTuple,bklineTuple,AbklineTuple,fxflinedict)
        
-       start_date = tkeytuple[0]
-       
-       end_date   = tkeytuple[1]
         
-       pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,start_date,end_date,KlineType,bkdict,fxflinedict)
+       #pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,Abkxfdf,start_date,end_date,KlineType,Abkdict,fxflinedict)
        
        gc.collect()
     
