@@ -973,7 +973,7 @@ class PlotToExcel():
         #bkchar_tuple =(bk_XY,bkXY_list,shift,shift2,style)
         
         # CD6600 橙色，C1C1C1紫色，556B2F草绿色，696969灰色，
-        colorlist =['CD6600','0F0F0F','FF0000','556B2F','FFD700']
+        colorlist =['CD6600','0F0F0F','FF0000','556B2F','FFD700','C1C1C1','556B2F','696969']
         
         
         if KlineType=='5M':
@@ -1571,6 +1571,7 @@ class PlotToExcel():
         #bkp_tuple =(bkcodestr,Abkdict,idataXY_dict,bench_XY)
         sheetflag = False
         
+        lastflag  = False
         
         for qrsheet in wbk.worksheets_objs:
             
@@ -1623,7 +1624,7 @@ class PlotToExcel():
             
             bkcount = 0
             
-            bkNum   = 5 
+            bkNum   = 8 
             
             
             bkidf_list =bkcodestr.split(',')
@@ -1637,6 +1638,14 @@ class PlotToExcel():
                
                bkname = ''
                
+               if lastfile==dflist: 
+                   lastflag = True
+               
+               test1 = Abkdict.has_key(int(dflist))
+               
+               test2 = AbkXY_dict.has_key(int(dflist))
+               
+               test3 = idataXY_dict.has_key(int(bench_key))
                
                if Abkdict.has_key(int(dflist)) and AbkXY_dict.has_key(int(dflist)) and idataXY_dict.has_key(int(bench_key)):
                    
@@ -1662,7 +1671,7 @@ class PlotToExcel():
                      bktiles = bktiles + ',' +bkname  
                                       
                   #每隔固定几个值进行读取
-                  if bkcount%bkNum ==0:
+                  if bkcount%bkNum ==0 or lastflag :
                      
                      idxstr  = u'指数数据'
                      
@@ -2494,7 +2503,7 @@ if '__main__'==__name__:
     allMarketIndex = '000002,399107'
     
     #规模指数(000002 A股指数，399001深圳成指，399101中小板指，399102创业板，000300沪深300，000016上证50，000905中证500)    
-    scaleIndex = '000002,399107,399101,399102,000300,000016,000905'
+    scaleIndex = '000002,399107,399101,399102,399300,000016,000905'
     
     scaleDict = { 2:u'A股指数',
                  399107:u'深圳A指',
@@ -2502,7 +2511,7 @@ if '__main__'==__name__:
                  399102:u'创业板指',
                  399300:u'沪深300',
                  16:u'上证50',
-                 399905:u'中证500',
+                 905:u'中证500',
                  int(benchmarkIndex):benchmarkName
                  }
         
@@ -2510,7 +2519,7 @@ if '__main__'==__name__:
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-07-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-08-15", "%Y-%m-%d")
     
     end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
@@ -2522,7 +2531,7 @@ if '__main__'==__name__:
     KlineType ='D'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2016-01-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-05-01", "%Y-%m-%d")
     
     end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
