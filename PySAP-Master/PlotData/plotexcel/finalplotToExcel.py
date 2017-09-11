@@ -632,7 +632,7 @@ class PlotToExcel():
                 if bkdict.has_key(dfdict):
                    hq_name = bkdict[dfdict] 
                    
-                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
+                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','').replace(u'通达信概念-','')
                 
                 tmpdf['hq_name']  = hq_name
                 
@@ -806,7 +806,7 @@ class PlotToExcel():
                    
                    hq_name = bkdict[dfdict] 
                    
-                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
+                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','').replace(u'通达信概念-','')
                 
                 
                 tmpdf['hq_name']  = hq_name
@@ -1693,7 +1693,7 @@ class PlotToExcel():
                   
                   bkname = Abkdict[int(dflist)]
                   
-                  bkname = bkname.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
+                  bkname = bkname.replace(u'通达信行业-','').replace(u'通达信细分行业-','').replace(u'通达信概念-','')
                   
                   bktiles = bkname +'('+bkidf_code+')'
                   
@@ -1840,7 +1840,7 @@ class PlotToExcel():
                   
                   bkname = Abkdict[int(dflist)]
                   
-                  bkname = bkname.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
+                  bkname = bkname.replace(u'通达信行业-','').replace(u'通达信细分行业-','').replace(u'通达信概念-','')
                   
                   #bktiles = bkname +'('+bkidf_code+')'
                   
@@ -2058,6 +2058,7 @@ class PlotToExcel():
         
         idataXY_dict ={}
         
+        bkstr  =''
                 
         for dflist in  bmi_list:
             
@@ -2072,6 +2073,11 @@ class PlotToExcel():
                bkidf_len   = len(bkidf_item)
                
                tmpdatalist = [bkidf_code,top,left,bkidf_len]
+               
+               if bkstr=='':
+                   bkstr = bkidf_code
+               else:
+                   bkstr = bkstr + ',' + bkidf_code
                
                
                idataXY_dict[int(bkidf_code)] = tmpdatalist
@@ -2094,7 +2100,7 @@ class PlotToExcel():
                
                top = top   + bkidf_len + 2
                
-        return  IData_Sheet,idataXY_dict
+        return  IData_Sheet,idataXY_dict,bkstr
         
     #构建指数excel构架    
     def bulidIndexExcelFrame(self,bmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType):
@@ -2187,7 +2193,7 @@ class PlotToExcel():
                 bmiColumns = list([u'基准指数代码', u'基准指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
                 
                 #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
-                (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
+                (IData_Sheet,idataXY_dict,bmstr) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
                 
                 data_left = data_left +len(bmiColumns) +2
               
@@ -2203,23 +2209,27 @@ class PlotToExcel():
      
     def bulidAllIndexExcelFrame(self,bmidf,ScaleTuple,LineTuple,ConceptTuple,KlineType):
         
+        
+        #处理通达信行业，细分行业
+        #LineTuple = (bkcodestr,xfbkcodestr,axdtmp_idf,Abkdict,fxflinedict)
+        
         #规模指数
-        scaleIndex = ScaleTuple[0]
+        #scaleIndex = ScaleTuple[0]
         sxdtmp_idf = ScaleTuple[1]
         
         #处理通达信行业，细分行业
         bkcodestr  = LineTuple[0]
         
-        axdtmp_idf = LineTuple[1]
+        xfbkcodestr = LineTuple[1]
         
-        bkcodestr = LineTuple[2]
-        
+        axdtmp_idf = LineTuple[2]
+            
         Abkdict = LineTuple[3]
         
         fxflinedict = LineTuple[4]
                 
         #通达信概念        
-        Cbkcodestr = ConceptTuple[0]
+        #Cbkcodestr = ConceptTuple[0]
 
         cxdtmp_idf = ConceptTuple[1]            
                        
@@ -2275,14 +2285,14 @@ class PlotToExcel():
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
-            (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
+            (IData_Sheet,idataXY_dict,bmstr) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
             
             data_left = data_left +len(bmiColumns) +2
         
         sxdtmp_idf.fillna(method='bfill',inplace=True)
         #规模指数数据写入数据sheet中
         if len(sxdtmp_idf)>0:
-            scaleidf_group = sxdtmp_idf.groupby('hq_code')
+            scaleidf_group = sxdtmp_idf.groupby('hq_code',sort=False)
     
             scaleidf_list = list(scaleidf_group)
             
@@ -2290,7 +2300,7 @@ class PlotToExcel():
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
-            (IData_Sheet,scaleXY_dict) = self.bulidIndexDataToExcel(scaleidf_list,IData_Sheet,xdiColumns,data_left,data_top)
+            (IData_Sheet,scaleXY_dict,scalestr) = self.bulidIndexDataToExcel(scaleidf_list,IData_Sheet,xdiColumns,data_left,data_top)
             
             data_left = data_left +len(xdiColumns) +2
             
@@ -2302,7 +2312,7 @@ class PlotToExcel():
         #行业指数，概念指数 数据写入数据sheet中
         if len(axdtmp_idf)>0 and len(cxdtmp_idf)>0:
             
-            axdtmp_group = axdtmp_idf.groupby('hq_code')
+            axdtmp_group = axdtmp_idf.groupby('hq_code',sort=False)
     
             abkidf_list = list(axdtmp_group)
             
@@ -2310,12 +2320,12 @@ class PlotToExcel():
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
-            (IData_Sheet,AbkXY_dict) = self.bulidIndexDataToExcel(abkidf_list,IData_Sheet,xdiColumns,data_left,data_top)
+            (IData_Sheet,AbkXY_dict,bkstr) = self.bulidIndexDataToExcel(abkidf_list,IData_Sheet,xdiColumns,data_left,data_top)
             
             data_left = data_left +len(xdiColumns) +2
             
             
-            cxdtmp_group = cxdtmp_idf.groupby('hq_code')
+            cxdtmp_group = cxdtmp_idf.groupby('hq_code',sort=False)
     
             cbkidf_list = list(cxdtmp_group)
             
@@ -2323,15 +2333,15 @@ class PlotToExcel():
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
-            (IData_Sheet,CbkXY_dict) = self.bulidIndexDataToExcel(cbkidf_list,IData_Sheet,xdiColumns,data_left,data_top)
+            (IData_Sheet,CbkXY_dict,cbkstr) = self.bulidIndexDataToExcel(cbkidf_list,IData_Sheet,xdiColumns,data_left,data_top)
             
             data_left = data_left +len(xdiColumns) +2
             
             #基准指数坐标
             
-            scaleTuple =(scaleIndex,scaleDict,scaleXY_dict)            
+            scaleTuple =(scalestr,scaleDict,scaleXY_dict)            
             
-            lineTuple  =(bkcodestr,xfbkcodestr,Abkdict,AbkXY_dict,Cbkcodestr,Cbkdict,CbkXY_dict)                          
+            lineTuple  =(bkcodestr,xfbkcodestr,Abkdict,AbkXY_dict,cbkstr,Cbkdict,CbkXY_dict)                          
             
             wbk  = self.bulidAllExcelPic(wbk,IData_Sheet,xdiColumns,idataXY_dict,scaleTuple,lineTuple)
             
@@ -2525,8 +2535,10 @@ class PlotToExcel():
           
  
     #excel中plot相对指数强弱图形
-    def PlotAllIndexPicToExcel(self,timeTuple,KlineType,indexTuple,bklineTuple,AbklineTuple,fxflinedict,conceptTuple):
-        
+    def PlotAllIndexPicToExcel(self,timeTuple,KlineType,indexTuple,bklineTuple,bkxflineTuple,AbklineTuple,fxflinedict,conceptTuple):
+        #通达信细分行业tuple
+        # bkxflineTuple = (bkLinedf_xf,bkxfdf_xf,xfbkdict,xfbkcodestr) 
+    
         startDate = timeTuple[0]        
         endDate   = timeTuple[1]      
         
@@ -2548,6 +2560,7 @@ class PlotToExcel():
         Cbkdict = conceptTuple[2]
         Cbkcodestr = conceptTuple[3]
         
+        xfbkcodestr = bkxflineTuple[3]
         
         indexType = 'BoardIndex'
 #        
@@ -2651,7 +2664,7 @@ class PlotToExcel():
         ScaleTuple = (scaleIndex,sxdtmp_idf)
     
         #处理通达信行业，细分行业
-        LineTuple = (bkcodestr,axdtmp_idf,bkcodestr,Abkdict,fxflinedict)
+        LineTuple = (bkcodestr,xfbkcodestr,axdtmp_idf,Abkdict,fxflinedict)
                 
         #通达信概念
         ConceptTuple  = (Cbkcodestr,cxdtmp_idf,Cbkdict)
@@ -2729,7 +2742,7 @@ if '__main__'==__name__:
     
     dataFlag  = True
     
-    dataFlag  = False
+    #dataFlag  = False
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         
@@ -2787,7 +2800,7 @@ if '__main__'==__name__:
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-09-04", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-07-01", "%Y-%m-%d")
     
     end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
@@ -2859,7 +2872,7 @@ if '__main__'==__name__:
        timeTuple = KlineDict[KlineType] 
              
        #plot所有通达信指数，规模指数，通达信细分指数，概念
-       pte.PlotAllIndexPicToExcel(timeTuple,KlineType,indexTuple,bklineTuple,AbklineTuple,fxflinedict,conceptTuple)
+       pte.PlotAllIndexPicToExcel(timeTuple,KlineType,indexTuple,bklineTuple,bkxflineTuple,AbklineTuple,fxflinedict,conceptTuple)
        
         
        #pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,Abkxfdf,start_date,end_date,KlineType,Abkdict,fxflinedict)
