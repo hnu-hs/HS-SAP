@@ -192,7 +192,7 @@ class TmpDealData():
                    
                     
             if fdataflag:
-                        
+                                                         
                  if '\xef\xbb\xbf'  in flcode:
                       flcode = flcode.replace('\xef\xbb\xbf','')
                             
@@ -204,16 +204,21 @@ class TmpDealData():
                             
                      tmp  = fdata['hq_amo'] /100000000
                                                     
-                     fdata['hq_amo'] = tmp.round(2)
+                     fdata['hq_amo'] = tmp.round(3)
                             
                  if 'hq_vol' in fdcolumnsIndex:
                             
                      if fkey!='Stock':                       
                          tmp  = fdata['hq_vol'] /10000
+                         fdata['hq_vol'] = tmp.round(3)
+                         
                      else:
                          tmp  = fdata['hq_vol'] /1000000
                             
-                     fdata['hq_vol'] = tmp.round(2)
+                         fdata['hq_vol'] = tmp.round(3)
+                         
+                         fdata.loc[:,['hq_vol']] = np.where(fdata['hq_vol']==0,np.where(fdata['hq_vol']==0,-1,-fdata['hq_vol']),fdata['hq_vol'])
+                
                     
                  fdata['hq_code'] = int(flcode)   
                     
@@ -225,8 +230,15 @@ class TmpDealData():
                      
                     Afdata=Afdata.append(fdata)
                                         
-                    if fcount==100:
-                        k =1
+                    if fcount==1:
+                        
+                        delstr = "truncate table  " + str(dtable) 
+                 
+                        try:
+                            pd.read_sql_query(delstr,con=engine)
+                                    
+                        except:
+                            print delstr
                         
                     if fcount % int(fnum)==0:
                         
@@ -280,9 +292,7 @@ class TmpDealData():
                        except:
                             
                             print delstr
-                        
-                     
-                     
+                                             
                     if len(xdrlist)>0 and (int(flcode) in xdrlist) and stockflag:
                         
                         delstr = "delete from " + str(dtable) +' where hq_code =' +flcode
@@ -411,9 +421,10 @@ class PlotToExcel():
             
             
             idf['hq_allchg'] = np.where(idf['hq_allchg']==np.inf, -1, idf['hq_allchg'])
-            
-            
+                        
             idf['hq_chg'] = np.where(idf['hq_chg']==np.inf, -1, idf['hq_chg'])
+            
+            #idf['hq_xd'] = np.where(idf['hq_allchg']==np.inf, -1, idf['hq_allchg'])
         
         idf_ret = idf
         
@@ -450,6 +461,8 @@ class PlotToExcel():
                    idf_ret.loc[:,['hq_xdallchg']]  = idf_ret['hq_allchg']- idf_ret['bhq_allchg']
                                                   
                    idf_ret['hq_xdamo']  = (idf_ret['hq_amo']/idf_ret['bhq_amo']*100).round(2)
+                   
+                   idf_ret['hq_xdamo'] = np.where(idf_ret['hq_xdamo']==np.inf, -1, idf_ret['hq_xdamo'])
                     
                    xdidf_ret = xdidf_ret.append(idf_ret)
                    
@@ -565,19 +578,22 @@ class PlotToExcel():
                 tmpdf['hq_name']  = hq_name
                 
                 
-                tmpdf.loc[:,['hq_chg']]   = tmpdf['hq_chg']- tmpidf['hq_chg']
+                tmpdf.loc[:,['hq_chg']]   = tmpdf['hq_allchg']
                 
                 tmpdf.loc[:,['hq_allchg']]  = tmpdf['hq_allchg']- tmpidf['hq_allchg']
                 
                 tmpidf.loc[:,['hq_vol']] = np.where(tmpidf['hq_vol']==0,np.where(tmpdf['hq_vol']==0,-1,-tmpdf['hq_vol']),tmpidf['hq_vol'])
                 
-                tmpdf['hq_xdvol']  = (tmpdf['hq_vol']/tmpidf['hq_allvol']*100).round(2)
+                tmpdf['hq_xdvol']  = (tmpdf['hq_vol']/tmpidf['hq_allvol']*100).round(3)
                 
+                tmpdf['hq_xdvol'] = np.where(tmpdf['hq_xdvol']==np.inf, -1, tmpdf['hq_xdvol'])
                 
                 tmpcolums = tmpdf.columns
                 
                 if 'hq_amo' in tmpcolums:                    
-                    tmpdf['hq_xdamo']  = (tmpdf['hq_amo']/tmpidf['hq_allamo']*100).round(2)
+                    tmpdf['hq_xdamo']  = (tmpdf['hq_amo']/tmpidf['hq_allamo']*100).round(3)
+                    
+                    tmpdf['hq_xdamo'] = np.where(tmpdf['hq_xdamo']==np.inf, -1, tmpdf['hq_xdamo'])
                 
                 
                 if dictcount<=1:
@@ -609,7 +625,7 @@ class PlotToExcel():
                    
                    (tmpstockdf,stockChgDict) = self.getAllStockChg(bkitem,bkidf_tmp)
                    
-                   bksrdf     = tmpstockdf[['board_id','board_name','hq_date','hq_time','stock_id','stock_name','hq_close','hq_preclose','hq_vol','hq_amo','hq_chg','hq_xdallchg','hq_xdamo']]
+                   bksrdf     = tmpstockdf[['board_id','board_name','hq_date','hq_time','stock_id','stock_name','hq_close','hq_preclose','hq_vol','hq_amo','hq_allchg','hq_xdallchg','hq_xdamo']]
                     
                    bkStockdict[dfdict] = bksrdf
                    
@@ -645,7 +661,7 @@ class PlotToExcel():
         if KlineType=='5M':
            interval_unit = 48
         else:           
-           interval_unit = 5  
+           interval_unit = 7 
        
         #向图表添加数据 
         
@@ -655,7 +671,6 @@ class PlotToExcel():
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
              'line':{'color':'red'},
-             'y2_axis': True, 
                     
              })            
             
@@ -663,7 +678,9 @@ class PlotToExcel():
              'name':[idxstr, data_top2+1, data_left2+1],
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
-             'line':{'color':'blue'},  
+             'line':{'color':'blue'}, 
+             'y2_axis': True, 
+
                       
              })
              
@@ -674,7 +691,7 @@ class PlotToExcel():
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
              'line':{'color':'FF6347'},
-             'y2_axis': True,      
+            
              }) 
                           
              bk_chart.add_series({
@@ -682,7 +699,8 @@ class PlotToExcel():
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
              'line':{'color':'708090'},  
-                       
+             'y2_axis': True, 
+          
              })
                  
         if style==3:
@@ -726,7 +744,7 @@ class PlotToExcel():
                         'name_font': {'size': 10, 'bold': True}
                         })
                        
-        bk_chart.set_size({'width':897,'height':300})
+        bk_chart.set_size({'width':1500,'height':450})
            
         
         return bk_chart
@@ -746,7 +764,7 @@ class PlotToExcel():
         if KlineType=='5M':
            interval_unit = 48
         else:           
-           interval_unit = 5  
+           interval_unit = 7 
         
         #基准无需变动
         
@@ -757,6 +775,7 @@ class PlotToExcel():
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len, data_left2+shift2],
              'line':{'color':'blue'},  
+             'y2_axis': True
                       
              })
              
@@ -768,7 +787,7 @@ class PlotToExcel():
                  'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
                  'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
                  'line':{'color':colorlist[icount]},
-                 'y2_axis': True, 
+                 
                         
                  })                 
                 
@@ -810,7 +829,7 @@ class PlotToExcel():
                         'name_font': {'size': 10, 'bold': True}
                         })
                        
-        bk_chart.set_size({'width':897,'height':300})
+        bk_chart.set_size({'width':1500,'height':450})
            
         
         return bk_chart    
@@ -828,7 +847,7 @@ class PlotToExcel():
         if KlineType=='5M':
            interval_unit = 48
         else:           
-           interval_unit = 5  
+           interval_unit = 7  
         
         icount  = 0 
         
@@ -914,7 +933,7 @@ class PlotToExcel():
                         'name_font': {'size': 10, 'bold': True}
                         })
                        
-        bk_chart.set_size({'width':897,'height':300})
+        bk_chart.set_size({'width':1500,'height':450})
            
         
         return bk_chart     
@@ -1056,7 +1075,7 @@ class PlotToExcel():
                               datalist = tmplist[0]
                               
                               
-                              if bkidf_code=='880447':
+                              if bkidf_code=='880409':
                                   mm = 1
                                                               
                               IData_Sheet.write_row(sdata_top+srow+1, sdata_left,datalist)
@@ -1075,7 +1094,7 @@ class PlotToExcel():
                idxstr  = u'指数数据'
                
                #指数参数设置
-               shift =11
+               shift =10
                
                data_top2 = 0
                
@@ -1092,7 +1111,7 @@ class PlotToExcel():
                QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
                 #bg+=19       
              
-               pic_lef+=len(xdiColumns)+2
+               pic_lef+=len(xdiColumns)+2+10 
                
                #画成交量与成交金额相对相对量比
                
@@ -1115,10 +1134,10 @@ class PlotToExcel():
                       
                data_top+=bkidf_len +2
                
-               pic_top+=15
+               pic_top+=23
                
                if lastfile!=dflist: 
-                   pic_lef-=len(xdiColumns) +2
+                   pic_lef-=len(xdiColumns) +2+10 
            
                #此处开始处理excel分类显示指数组，每N个指数一起显示
                          
@@ -1202,7 +1221,7 @@ class PlotToExcel():
                                
                                bktiles = bkdict[bkcl]
                                
-                               shift =11
+                               shift =10
                                
                                style   = 1
                                     
@@ -1217,7 +1236,7 @@ class PlotToExcel():
                                tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                                 #bg+=19       
                                
-                               picbk_top+=15
+                               picbk_top+=23
                                
                                #画成交量与成交金额相对相对量比
                                
@@ -1238,7 +1257,7 @@ class PlotToExcel():
                                tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                                
                                
-                               picbk_top+=15
+                               picbk_top+=23
                                                       
                                #picbk_lef += len(xdiColumns)+2
                                
@@ -1268,11 +1287,11 @@ class PlotToExcel():
                                     
                                               bktiles = bkstockname+'('+str(bkstockcode)+')'
                                                
-                                              shift =11
+                                              shift =10
                                                
                                               style   = 3
                                                     
-                                              shift2  = 11
+                                              shift2  = 10
                                                
                                               bkdata_left2 = 0 
                                               
@@ -1280,7 +1299,7 @@ class PlotToExcel():
                                                                          
                                               tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                                               
-                                              picbk_top+=15
+                                              picbk_top+=23
                                                                                     
                                               #画成交量与成交金额相对相对量比
                                               shift =12
@@ -1295,9 +1314,9 @@ class PlotToExcel():
                                                
                                               tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
                                                 
-                                              picbk_top+=15
+                                              picbk_top+=23
                                           
-                               picbk_lef += len(xdiColumns)+2                                      
+                               picbk_lef += len(xdiColumns)+2 +10                                     
                        
                        bkcodelist = []                                  
         
@@ -1393,7 +1412,7 @@ class PlotToExcel():
                    idxstr  = u'指数数据'
                    
                    #指数参数设置
-                   shift =11
+                   shift =10
                    
                    bktiles = '(' + bktiles +')' 
                    
@@ -1415,7 +1434,7 @@ class PlotToExcel():
                    QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
                     #bg+=19       
                  
-                   pic_lef+=len(xdiColumns)+2
+                   pic_lef+=len(xdiColumns)+2+10 
                    
                    #画成交量与成交金额相对相对量比
                    
@@ -1438,14 +1457,14 @@ class PlotToExcel():
                           
                    dstart_top = data_top
                    
-                   pic_top+=15
+                   pic_top+=23
                    
                    if lastfile!=dflist: 
-                       pic_lef-=len(xdiColumns) +2
+                       pic_lef-=len(xdiColumns) +2+10 
                    
                    bktiles =''
         
-        pic_lef+=len(xdiColumns) +2
+        pic_lef+=len(xdiColumns) +2+10 
         
         
         tmp_Sheet = wbk.add_worksheet(u'细分行业')
@@ -1476,7 +1495,7 @@ class PlotToExcel():
                   bktiles = '(' + str(flcode) +')' 
                    
                   #指数参数设置
-                  shift =11
+                  shift =10
                    
                   shift2  = 6
                    
@@ -1487,7 +1506,7 @@ class PlotToExcel():
                   tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
                     #bg+=19       
                  
-                  pic_lef+=len(xdiColumns)+2
+                  pic_lef+=len(xdiColumns)+2+10 
                    
                   #画成交量与成交金额相对相对量比
                    
@@ -1504,10 +1523,10 @@ class PlotToExcel():
                           
                   dstart_top = data_top
                    
-                  pic_top+=15
+                  pic_top+=23
                    
                   if lastfile!=flcode: 
-                       pic_lef-=len(xdiColumns) +2
+                       pic_lef-=len(xdiColumns) +2+10 
                    
                
         return wbk,pic_lef
@@ -1916,12 +1935,13 @@ class PlotToExcel():
         
         # 获取前几，后几排名数据     
         (xdtmp_idf,xdhead_idf) =self.getSortedIndexdf(xd_idf,sortlist)
+                      
+        #画出指数排名图形（所有图形）
+        self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf,KlineType,fxflinedict)
         
         #画出指数排名图形
         self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType)
-                
-        #画出指数排名图形（所有图形）
-        self.bulidAllIndexExcelFrame(ebmidf,xdtmp_idf,KlineType,fxflinedict)
+          
         
         kk =1 
         
@@ -1967,7 +1987,7 @@ if '__main__'==__name__:
     
     dataFlag  = True
     
-    #dataFlag  = False
+    dataFlag  = False
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         
@@ -1975,15 +1995,22 @@ if '__main__'==__name__:
         
         #allflag = True        
         
-        #Adate='2017/08/07'
+       #Adate='2017/08/24'
         
         #需加入list
         
         xdrlist = xdrdata['Scode'].tolist()
         
         tdd.getAllTypeDir(allflag,Adate,xdrlist)
+   
+        if allflag:
+            
+            try:
+               os._exit(0)
+            except:
+               print 'die.' 
     
-    
+    Adate = datetime.now().strftime('%Y-%m-%d')
 
     fxflinegroup = fdata.groupby('Linexf')
         
@@ -1997,26 +2024,28 @@ if '__main__'==__name__:
     #全市场指数（000002 A股指数，399107深圳A指数）
     allMarketIndex = '000002,399107'
         
-    #K线类型    
+#    #K线类型    
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-09-01", "%Y-%m-%d")
     
-    end_date   = datetime.strptime("2017-08-10", "%Y-%m-%d")
+    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     
     
     KlineDict[KlineType] = timetuple
     
+    Adate='2017-08-07'
+    
     #K线类型    
     KlineType ='D'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-01-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-07-01", "%Y-%m-%d")
     
-    end_date   = datetime.strptime("2017-08-10", "%Y-%m-%d")
+    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     
@@ -2071,7 +2100,8 @@ if '__main__'==__name__:
        end_date   = tkeytuple[1]
         
        pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,bkxfdf,start_date,end_date,KlineType,bkdict,fxflinedict)
-    
+       
+       gc.collect()
     
     m = 1
     

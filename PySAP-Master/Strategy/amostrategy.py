@@ -18,6 +18,8 @@ class amoStrategy:
         #不属于56个行业的板块数据文件
         self.sindexfile=u'E:\\工作\\标的\\sindex.txt'
         
+        u'\\BoardIndex\\config\\通达信数据补齐目录\\Tdxdb.txt'      
+        
         self.stocBoardFile=u'E:\\工作\\股票数据\\股票细分板块\\allboard.txt'
         
         self.powerIndexDir=u'E:/工作/报表/量能选股/'
