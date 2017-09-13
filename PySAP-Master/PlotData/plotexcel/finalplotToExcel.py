@@ -2742,7 +2742,7 @@ if '__main__'==__name__:
     
     dataFlag  = True
     
-    #dataFlag  = False
+    dataFlag  = False
     #调用临时入库程序，完成补齐日线数据   
     if dataFlag:
         
