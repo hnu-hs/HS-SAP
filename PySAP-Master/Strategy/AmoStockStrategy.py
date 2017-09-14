@@ -30,18 +30,15 @@ from DataHanle.MktDataHandle import MktIndexHandle
 from datetime import datetime
 
  
-class PlotToExcel():
+class AmoStrategy():
     
     #初始化程序
     def __init__(self):
         
         self.mktindex = MktIndexHandle()
                 
-        self.BCfname = '\\PlotData\\export\\excel\\板块强弱分类数据'
+        self.lineDir = '\\BoardIndex\\config\\通达信行业.txt'
         
-        self.BAfname = '\\PlotData\\export\\excel\\板块强弱数据'
-        
-        pass;
           
     
     #获取指数数据
@@ -430,7 +427,7 @@ class PlotToExcel():
                    
                    hq_name = bkdict[dfdict] 
                    
-                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','')
+                   hq_name = hq_name.replace(u'通达信行业-','').replace(u'通达信细分行业-','').replace(u'通达信概念-','')
                 
                 
                 tmpdf['hq_name']  = hq_name
@@ -1925,45 +1922,53 @@ class PlotToExcel():
         self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType)
           
  
-    #excel中plot相对指数强弱图形
-    def PlotAllIndexPicToExcel(self,timeTuple,KlineType,indexTuple,bklineTuple,AbklineTuple,fxflinedict):
+    #生成所有报表
+    def plotDataToReport(self,baseTuple,tdxlineTuple,tdxconceptTuple,KlineType,timeTuple):
+        
         
         startDate = timeTuple[0]        
         endDate   = timeTuple[1]      
         
-        benchmarkIndex = indexTuple[0]        
-        #获取所有市场数据
-        allMarketIndex = indexTuple[1]
+        #获取所有基本数据
+        benchmarkIndex = baseTuple[0]        
+      
+        benchmarkName  = baseTuple[1]
+      
+        allMarketIndex = baseTuple[2]   
         
-        #获取规模指数
+        #获取通达信行业数据
+        Abkdict     = tdxlineTuple[0]
         
-        scaleIndex  = indexTuple[2]         
-        scaleDict  = indexTuple[3]
+        Abkcodestr  = tdxlineTuple[1]
         
-        bkdict =bklineTuple[2]
-        bkcodestr = bklineTuple[3]
+        Abkxfdf     = tdxlineTuple[2]
         
-        Abkdict = AbklineTuple[2]        
-        Abkcodestr = AbklineTuple[3]
+        bkcodestr   = tdxlineTuple[3]   
         
-        indexType = 'BoardIndex'
-#        
-#        #获取指数排名数据        
-#        hidf  =  self.getPlotIndexData(bkcodestr,startDate,endDate,KlineType,indexType)
+        xfbkcodestr = tdxlineTuple[4]
         
-        ahidf =  self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
+        fxflinedict = tdxlineTuple[5]
         
+        #获取通达信概念数据        
+        cfdict      = tdxconceptTuple[0]
+        
+        cfcodestr   = tdxconceptTuple[1]   
+        
+        cfdf_xf     = tdxconceptTuple[2]
+                     
+        #获取基准指数数         
         indexType = 'ScaleIndex'
         
-        #获取基准指数数据
         bmidf =  self.getPlotIndexData(benchmarkIndex,startDate,endDate,KlineType,indexType)
-        
+
         #获取所有指数成交量，成交额数据        
         allrawdf  =  self.getPlotIndexData(allMarketIndex,startDate,endDate,KlineType,indexType)
-        
-        #获取规模指数数据
-        scaleidf  = self.getPlotIndexData(scaleIndex,startDate,endDate,KlineType,indexType)
-                
+                    
+        #获取通达信各指数             
+        indexType = 'BoardIndex'
+   
+        tdxline_df =  self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
+                        
         #计算所有
         if KlineType =='D':
                 
@@ -1992,49 +1997,47 @@ class PlotToExcel():
         
         bmidf['hq_allamo'] = Salldf['hq_amo']
         
-        if 'hq_time' not in ahidf.columns:
-            ahidf['hq_time']  = '00:00:00'
-#        
-#        if 'hq_time' not in hidf.columns:
-#            hidf['hq_time']  = '00:00:00'
+        if 'hq_time' not in tdxline_df.columns:
+            tdxline_df['hq_time']  = '00:00:00'
             
         if 'hq_time' not in bmidf.columns:
             bmidf['hq_time']  = '00:00:00'
-                
-        
+                        
         if 'hq_time' not in allrawdf.columns:
             allrawdf['hq_time']  = '00:00:00'
-                  
-        if 'hq_time' not in scaleidf.columns:
-            scaleidf['hq_time']  = '00:00:00'
-        
+       
         bmidf['hq_time'] = bmidf['hq_time'].astype('str')
             
          #获取所有指数排名数据(所有通达信行业) 
-        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,ahidf,Abkdict)
+        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
+        
+        #对sortlist进行分离，求出行业与细分 
+        self.dealTdxLine(AlineSortlist,fxflinedict)
+        
+        m = 1
 #        
 #        #获取所有指数排名数据(通达信行业) 
 #        (xdLine_idf,lineSortlist) = self.getIndexXdQr(bmidf,hidf,bkdict)         
-        
-        #获取所有规模指数排名数据
-        (xdscale_idf,scaleSortlist) = self.getIndexXdQr(bmidf,scaleidf,scaleDict)     
-       
-        #处理excel中的指数数据
-        ebmidf  = self.getExcelIndexData(bmidf,bkdict)        
-        
-        #获取前几，后几排名数据     
-        (axdtmp_idf,axdhead_idf) =self.getSortedIndexdf(AxdLine_idf,AlineSortlist)
-        
-#        #获取前几，后几排名数据     
-#        (xdtmp_idf,xdhead_idf) =self.getSortedIndexdf(xdLine_idf,lineSortlist)
 #        
-        #获取前几，后几排名数据(规模指数)     
-        (xdscale_idf,xdheadscale_idf) =self.getSortedIndexdf(xdscale_idf,scaleSortlist)
-            
-        #画出指数排名图形（所有图形）
-        self.bulidAllIndexExcelFrame(ebmidf,axdtmp_idf,bkcodestr,scaleIndex,xdscale_idf,Abkdict,scaleDict,KlineType,fxflinedict)
-                
-        #画出指数排名图形（所有图形）
+#        #获取所有规模指数排名数据
+#        (xdscale_idf,scaleSortlist) = self.getIndexXdQr(bmidf,scaleidf,scaleDict)     
+#       
+#        #处理excel中的指数数据
+#        ebmidf  = self.getExcelIndexData(bmidf,bkdict)        
+#        
+#        #获取前几，后几排名数据     
+#        (axdtmp_idf,axdhead_idf) =self.getSortedIndexdf(AxdLine_idf,AlineSortlist)
+#        
+##        #获取前几，后几排名数据     
+##        (xdtmp_idf,xdhead_idf) =self.getSortedIndexdf(xdLine_idf,lineSortlist)
+##        
+#        #获取前几，后几排名数据(规模指数)     
+#        (xdscale_idf,xdheadscale_idf) =self.getSortedIndexdf(xdscale_idf,scaleSortlist)
+#            
+#        #画出指数排名图形（所有图形）
+#        self.bulidAllIndexExcelFrame(ebmidf,axdtmp_idf,bkcodestr,scaleIndex,xdscale_idf,Abkdict,scaleDict,KlineType,fxflinedict)
+#                
+#        #画出指数排名图形（所有图形）
         #self.bulidAllIndexExcelFrame(ebmidf,xdscale_idf,KlineType,fxflinedict)
         
         #画出指数排名图形
@@ -2057,49 +2060,122 @@ class PlotToExcel():
              
         bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)
         
-        bkxfdf['board_name'] = (bkxfdf['board_name'].str.replace(u'通达信行业-','')).str.replace(u'通达信细分行业-','')
+        bkxfdf['board_name'] = ((bkxfdf['board_name'].str.replace(u'通达信行业-','')).str.replace(u'通达信细分行业-','')).str.replace(u'通达信概念-','')
+        
         
         return bkdict,bkcodestr,bkxfdf
+    
+    def getTdxXfLine(self):         
+             
+        #配置文件目录
+            
+        pwd   =  os.getcwd()
+            
+        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep)
+            
+        dbfname  = fpwd + self.lineDir
+                
+        fheader = ['Lcode','LName','Line','Linexf']
+            
+        #生成目录字典
+        fdata=pd.read_table(dbfname.decode('utf-8'),header=0,names=fheader,delimiter=',')
+                        
+        fxflinegroup = fdata.groupby('Linexf')
+            
+        fxflinedict  = dict(list(fxflinegroup))
+       
+        return fxflinedict
+    
+    def dealTdxLine(self,AlineSortlist,fxflinedict):
+
+        xflinesortlist = AlineSortlist
+                
+        linesortlist   = []
+        
+        #处理 fxflinedict 中的数据，key为0 代表 有细分行业指数，key为1 代表无细分行业指数
+        if fxflinedict.has_key(0) and fxflinedict.has_key(1):
+            
+            lineitem    = fxflinedict[0]
+            
+            xflineitem  = fxflinedict[1]
+            
+            #通达信行业
+            tdxlineItem = lineitem.append(xflineitem)
+            
+            del fxflinedict[0]
+            
+            del fxflinedict[1]
+            
+            tdxgroup     = tdxlineItem.groupby('Lcode')
+                
+            tdxdict      = dict(list(tdxgroup))
+            
+            tdxXfdict    = fxflinedict
+            
+            #只做一级行业排名                      
+            for lsl in AlineSortlist:
+                
+                linecode = lsl[0]     
+                
+                if linecode == 880335:
+                    k =1
+                 
+                if  tdxdict.has_key(int(linecode)):
+                   linesortlist.append(lsl) 
+                else:
+                   xflinesortlist.remove(lsl)
+                                 
+                
+                
+            
+            m =1
+        
+        return 1
         
 if '__main__'==__name__:  
-    
-    
-    lineDir = '\\PySAP-Master\\BoardIndex\\config\\通达信行业.txt'
-    
-    conceptDir ='\\PySAP-Master\\BoardIndex\\config\\通达信概念.txt'
-    
-    Adate = datetime.now().strftime('%Y/%m/%d')    
         
-    #配置文件目录
+    amosty = AmoStrategy()
         
-    pwd   =  os.getcwd()
+    Adate = datetime.now().strftime('%Y-%m-%d')    
         
-    fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"\..")
-        
-    dbfname  = fpwd + lineDir
-    
-    cfname  = fpwd + conceptDir
-        
-    fheader = ['Lcode','LName','Line','Linexf']
-    
-    cfheader =['cfcode','cfname']
-    
-    #生成目录字典
-    fdata=pd.read_table(dbfname.decode('utf-8'),header=0,names=fheader,delimiter=',')
-    
-    cfdata = pd.read_table(cfname.decode('utf-8'),header=0,names=cfheader,delimiter=',')
-
-    fxflinegroup = fdata.groupby('Linexf')
-        
-    fxflinedict  = dict(list(fxflinegroup))
-     
     #全市场指数（000002 A股指数，399107深圳A指）
     allMarketIndex = '000002,399107'
     
-    mktindex = MktIndexHandle()
-          
-    #获取板块与下属关联股票
+    #基准对比指数
+    benchmarkIndex = '399317'
+        
+    benchmarkName  =u'国证A指'
+       
     
+    KlineDict ={}
+    
+    #K线时间类型    
+    KlineType ='5M'
+        
+    #获取数据起始时间
+    start_date = datetime.strptime("2017-09-11", "%Y-%m-%d")
+    
+    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
+    
+    timetuple   =(start_date,end_date)
+    
+    KlineDict[KlineType] = timetuple
+#        
+    #K线时间类型   
+    KlineType ='D'
+        
+    #获取数据起始时间
+    start_date = datetime.strptime("2017-01-01", "%Y-%m-%d")
+    
+    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
+    
+    timetuple   =(start_date,end_date)    
+    
+    KlineDict[KlineType] = timetuple
+    
+    #数据库接口    
+    mktindex = amosty.mktindex
+             
     #通达信行业
     (bkLinedf,bkxfdf) = mktindex.MktIndexToStocksClassify('80201')
     
@@ -2107,142 +2183,48 @@ if '__main__'==__name__:
     (bkLinedf_xf,bkxfdf_xf) = mktindex.MktIndexToStocksClassify('80202')
     
      #通达信概念
-    (cfLinedf_xf,cfxfdf_xf) = mktindex.MktIndexToStocksClassify('80301')
-    
-    #通达信 板块代码
-    bkcodes = bkLinedf['bz_indexcode'].astype('str')
-    
-    #所有指数强弱，量比图
-       
-    pte = PlotToExcel()
-        
-    KlineDict ={}
-        
-    dataFlag  = False
-    
-    Adate = datetime.now().strftime('%Y/%m/%d')
-        
-    #配置文件目录
-        
-    pwd   =  os.getcwd()
-        
-    fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
-        
-    dbfname  = fpwd + lineDir
-    
-    xdrname  = fpwd + XDRDir
-        
-    fheader = ['Lcode','LName','Line','Linexf']
-    
-    xdrheader =['Scode','Sname','xdr']
-    
-    #生成目录字典
-    fdata=pd.read_table(dbfname.decode('utf-8'),header=0,names=fheader,delimiter=',')
-    
-    xdrdata = pd.read_table(xdrname.decode('utf-8'),header=0,names=xdrheader,delimiter=',')
-    #生成行业指数
-    
-    fxflinegroup = fdata.groupby('Linexf')
-        
-    fxflinedict  = dict(list(fxflinegroup))
-       
-    #基准对比指数
-    benchmarkIndex = '399317'
-        
-    benchmarkName  =u'国证A指'
-    
-    #全市场指数（000002 A股指数，399107深圳A指）
-    allMarketIndex = '000002,399107'
-    
-    #规模指数(000002 A股指数，399001深圳成指，399101中小板指，399102创业板，000300沪深300，000016上证50，000905中证500)    
-    scaleIndex = '000002,399107,399101,399102,399300,000016,000905'
-    
-    scaleDict = { 2:u'A股指数',
-                 399107:u'深圳A指',
-                 399101:u'中小板指',
-                 399102:u'创业板指',
-                 399300:u'沪深300',
-                 16:u'上证50',
-                 905:u'中证500',
-                 int(benchmarkIndex):benchmarkName
-                 }
-        
-    #K线类型    
-    KlineType ='5M'
-        
-    #获取数据起始时间
-    start_date = datetime.strptime("2017-08-15", "%Y-%m-%d")
-    
-    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
-    
-    timetuple   =(start_date,end_date)
-    
-    KlineDict[KlineType] = timetuple
-        
-    #K线类型    
-    KlineType ='D'
-        
-    #获取数据起始时间
-    start_date = datetime.strptime("2017-05-01", "%Y-%m-%d")
-    
-    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
-    
-    timetuple   =(start_date,end_date)
-    
-    
-    KlineDict[KlineType] = timetuple
-        
-#    #获取所有板块数据
-    mktindex  = pte.mktindex
-    
-    #获取板块与下属关联股票
-    
-    #通达信行业
-    (bkLinedf,bkxfdf) = mktindex.MktIndexToStocksClassify('80201')
-    
-    #通达信细分行业
-    (bkLinedf_xf,bkxfdf_xf) = mktindex.MktIndexToStocksClassify('80202')
+    (cfLinedf_xf,cfxfdf_xf) = mktindex.MktIndexToStocksClassify('80301')  
+
+    fxflinedict  =  amosty.getTdxXfLine()    
     
     #通达信所有板块
     AbkLinedf = bkLinedf.append(bkLinedf_xf, ignore_index=True)
         
     Abkxfdf = bkxfdf.append(bkxfdf_xf, ignore_index=True)
     
-    (Abkdict,Abkcodestr,Abkxfdf) = pte.dealBoardInfo(AbkLinedf,Abkxfdf,benchmarkName)
+    (Abkdict,Abkcodestr,Abkxfdf) = amosty.dealBoardInfo(AbkLinedf,Abkxfdf,benchmarkName)
     
-    (bkdict,bkcodestr,bkxfdf) = pte.dealBoardInfo(bkLinedf,bkxfdf,benchmarkName)
+    (bkdict,bkcodestr,bkxfdf) = amosty.dealBoardInfo(bkLinedf,bkxfdf,benchmarkName)
     
-    (xfbkdict,xfbkcodestr,bkxfdf_xf) = pte.dealBoardInfo(bkLinedf_xf,bkxfdf_xf,benchmarkName)
+    (xfbkdict,xfbkcodestr,bkxfdf_xf) = amosty.dealBoardInfo(bkLinedf_xf,bkxfdf_xf,benchmarkName)
     
-    #通达信行业tuple
-    bklineTuple = (bkLinedf,bkxfdf,bkdict,bkcodestr) 
+    (cfdict,cfcodestr,cfdf_xf) = amosty.dealBoardInfo(cfLinedf_xf,cfxfdf_xf,benchmarkName)
+        
+    #基础指数    
+    baseTuple  =(benchmarkIndex,benchmarkName,allMarketIndex)
     
-    #通达信细分行业tuple
-    bkxflineTuple = (bkLinedf_xf,bkxfdf_xf,xfbkdict,xfbkcodestr) 
+    #通达信行业
+    tdxlineTuple =(Abkdict,Abkcodestr,Abkxfdf,bkcodestr,xfbkcodestr,fxflinedict)
     
-    #通达信所有行业tuple
-    AbklineTuple = (AbkLinedf,Abkxfdf,Abkdict,Abkcodestr) 
-    
-    #所有指数tuple
-    indexTuple =(benchmarkIndex,allMarketIndex,scaleIndex,scaleDict)
-    
-    
+    #通达信概念
+    tdxconceptTuple =(cfdict,cfcodestr,cfdf_xf)
     
     for kdict in KlineDict:
+        
        #指数分类对比图
        KlineType = kdict
        
        timeTuple = KlineDict[KlineType] 
-             
-       #plot所有通达信指数，规模指数，通达信细分指数
-       pte.PlotAllIndexPicToExcel(timeTuple,KlineType,indexTuple,bklineTuple,AbklineTuple,fxflinedict)
-       
-        
-       #pte.PlotIndexPicToExcel(benchmarkIndex,allMarketIndex,bkcodestr,Abkxfdf,start_date,end_date,KlineType,Abkdict,fxflinedict)
-       
-       gc.collect()
     
-    m = 1
+       amosty.plotDataToReport(baseTuple,tdxlineTuple,tdxconceptTuple,KlineType,timeTuple)
+    
+    
+    #所有指数强弱，量比图
+    
+    #获取板块与下属关联股票
+    
+    
+    
     
     #所有指数强弱，量比图
     
