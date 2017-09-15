@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Created on Mon Sep 04 10:24:24 2017
 
@@ -19,6 +19,7 @@ import gc
 
 import pandas as pd
 import numpy as np
+import copy
 
 import sys
 sys.path.append("..")
@@ -88,19 +89,9 @@ class AmoStrategy():
             idf_close  = idf_tmp[0]
         
             idf['hq_preclose'] = idf['hq_close'].shift(1)
-#                        
-#            #获取第一个数据
-#            fprecloseItem =  idf['hq_preclose'][1]
-#            
-#            #获取第一个数据
-#            fcloseItem =  idf['hq_close'][1]
-#            
-#            if fprecloseItem==0 and fcloseItem!=0:
-#               idf['hq_preclose'][1] =  fcloseItem
-#            
+
             preidf = idf['hq_preclose']
             
-            #处理
             preidf.fillna(method='bfill')
             
             
@@ -112,9 +103,7 @@ class AmoStrategy():
             idf['hq_allchg'] = np.where(idf['hq_allchg']==np.inf, -1, idf['hq_allchg'])
                         
             idf['hq_chg'] = np.where(idf['hq_chg']==np.inf, -1, idf['hq_chg'])
-            
-            #idf['hq_xd'] = np.where(idf['hq_allchg']==np.inf, -1, idf['hq_allchg'])
-        
+                    
         idf_ret = idf
         
         return idf_ret
@@ -358,19 +347,11 @@ class AmoStrategy():
         
         if len(bkidf)>0 and len(bmidf)>0  :
             
-            
             #指数数据分组        
             hkidf_group = bkidf.groupby('hq_code')
-            
-#            #股票数据分组
-#            stockdf_group = stockdf.groupby('hq_code')
-#                        
-#            #生成指数dict        
+                 
             hkidf_dict = dict(list(hkidf_group))
-#            
-#            #生成股票dict            
-#            stockdf_dict = dict(list(stockdf_group))
-#                                              
+          
             #生成基准指数累计涨跌幅度
             xdhidf   = self.getIndexOrStockChg(bmidf)
             
@@ -380,7 +361,6 @@ class AmoStrategy():
             
             dictcount = 0 
             
-                
             #取出排名指数
             for dfdict in  hkidf_dict:
                 
@@ -484,6 +464,8 @@ class AmoStrategy():
             
             #对涨跌幅字典进行排序
             dict_ret= sorted(sortdict.items(), key=lambda d:d[1], reverse = True)
+            
+            del bkidf,bkdict,tmpdf,xdhead_idf,hidf_ret
                         
             gc.collect()
         
@@ -1744,32 +1726,18 @@ class AmoStrategy():
 
                
     #处理指数数据
-    def getExcelIndexData(self,bmidf,bkdict):
+    def getExcelIndexData(self,bmidf,benchmarkName):
         
         retdata  = pd.DataFrame()
         
         if len(bmidf)>0:
             
             tmpdata = bmidf[1:]
-            
-#           retdata = tmpdata[['hq_code','hq_date','hq_close','hq_preclose','hq_vol','hq_chg','hq_allchg']]
-#             
-            rethead   = bmidf['hq_code']
-#            
-            rethcode  = rethead.tolist()
-            
-            hq_name = ''
-            
-            if len(rethcode)>0:
-                hq_code = rethcode[0]
-                
-                if(bkdict.has_key(hq_code)):                 
-                   hq_name = bkdict[hq_code]
-                   
-            tmpdata['hq_name'] =hq_name        
+#                                                   
+            tmpdata['hq_name'] =benchmarkName        
 #            
             retdata = tmpdata[['hq_code','hq_name','hq_date','hq_time','hq_close','hq_preclose','hq_vol','hq_chg','hq_allchg','hq_allvol','hq_allamo']]
-                
+        
         return retdata
         
      # 获取前几，后几排名数据 
@@ -1924,8 +1892,7 @@ class AmoStrategy():
  
     #生成所有报表
     def plotDataToReport(self,baseTuple,tdxlineTuple,tdxconceptTuple,KlineType,timeTuple):
-        
-        
+                
         startDate = timeTuple[0]        
         endDate   = timeTuple[1]      
         
@@ -1964,11 +1931,6 @@ class AmoStrategy():
         #获取所有指数成交量，成交额数据        
         allrawdf  =  self.getPlotIndexData(allMarketIndex,startDate,endDate,KlineType,indexType)
                     
-        #获取通达信各指数             
-        indexType = 'BoardIndex'
-   
-        tdxline_df =  self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
-                        
         #计算所有
         if KlineType =='D':
                 
@@ -1997,9 +1959,6 @@ class AmoStrategy():
         
         bmidf['hq_allamo'] = Salldf['hq_amo']
         
-        if 'hq_time' not in tdxline_df.columns:
-            tdxline_df['hq_time']  = '00:00:00'
-            
         if 'hq_time' not in bmidf.columns:
             bmidf['hq_time']  = '00:00:00'
                         
@@ -2007,32 +1966,35 @@ class AmoStrategy():
             allrawdf['hq_time']  = '00:00:00'
        
         bmidf['hq_time'] = bmidf['hq_time'].astype('str')
-            
-         #获取所有指数排名数据(所有通达信行业) 
-        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
         
-        #对sortlist进行分离，求出行业与细分 
-        self.dealTdxLine(AlineSortlist,fxflinedict)
+        #获取通达信各指数             
+        indexType = 'BoardIndex'
         
-        m = 1
+        isXf  = True
+        
+        indexDataTuple = (Abkcodestr,startDate,endDate,KlineType,indexType,fxflinedict)
+        
+        amolinedf = self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,isXf)
+        
+        
+        #处理excel中的指数数据
+        ebmidf  = self.getExcelIndexData(bmidf,benchmarkName)    
+                
+   
+#            
+#         #获取所有指数排名数据(所有通达信行业) 
+#        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
 #        
-#        #获取所有指数排名数据(通达信行业) 
-#        (xdLine_idf,lineSortlist) = self.getIndexXdQr(bmidf,hidf,bkdict)         
+#        #对sortlist进行分离，求出行业与细分 
+#        (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict)
+        
+#        #获取所有指数排名数据(所有通达信行业) 
+#        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
 #        
-#        #获取所有规模指数排名数据
-#        (xdscale_idf,scaleSortlist) = self.getIndexXdQr(bmidf,scaleidf,scaleDict)     
-#       
-#        #处理excel中的指数数据
-#        ebmidf  = self.getExcelIndexData(bmidf,bkdict)        
+#        #对sortlist进行分离，求出行业与细分 
+#        (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict)
 #        
-#        #获取前几，后几排名数据     
-#        (axdtmp_idf,axdhead_idf) =self.getSortedIndexdf(AxdLine_idf,AlineSortlist)
-#        
-##        #获取前几，后几排名数据     
-##        (xdtmp_idf,xdhead_idf) =self.getSortedIndexdf(xdLine_idf,lineSortlist)
-##        
-#        #获取前几，后几排名数据(规模指数)     
-#        (xdscale_idf,xdheadscale_idf) =self.getSortedIndexdf(xdscale_idf,scaleSortlist)
+        
 #            
 #        #画出指数排名图形（所有图形）
 #        self.bulidAllIndexExcelFrame(ebmidf,axdtmp_idf,bkcodestr,scaleIndex,xdscale_idf,Abkdict,scaleDict,KlineType,fxflinedict)
@@ -2056,8 +2018,6 @@ class AmoStrategy():
                     
         bkcodestr = ','.join(bkcodes)
         
-        bkxfdf = bkxfdf.append(bkxfdf_xf, ignore_index=True)
-             
         bkxfdf[['board_id']]= bkxfdf[['board_id']].astype(str)
         
         bkxfdf['board_name'] = ((bkxfdf['board_name'].str.replace(u'通达信行业-','')).str.replace(u'通达信细分行业-','')).str.replace(u'通达信概念-','')
@@ -2083,14 +2043,22 @@ class AmoStrategy():
         fxflinegroup = fdata.groupby('Linexf')
             
         fxflinedict  = dict(list(fxflinegroup))
-       
+        
+        del fxflinegroup,fdata    
+        
+        gc.collect()
+        
         return fxflinedict
     
     def dealTdxLine(self,AlineSortlist,fxflinedict):
 
-        xflinesortlist = AlineSortlist
+        xflinesortlist = copy.deepcopy(AlineSortlist)
                 
         linesortlist   = []
+        
+        tdxdict        = {}
+        
+        tdxXfdict      = {}
         
         #处理 fxflinedict 中的数据，key为0 代表 有细分行业指数，key为1 代表无细分行业指数
         if fxflinedict.has_key(0) and fxflinedict.has_key(1):
@@ -2116,21 +2084,149 @@ class AmoStrategy():
             for lsl in AlineSortlist:
                 
                 linecode = lsl[0]     
-                
-                if linecode == 880335:
-                    k =1
-                 
-                if  tdxdict.has_key(int(linecode)):
-                   linesortlist.append(lsl) 
-                else:
-                   xflinesortlist.remove(lsl)
                                  
-                
-                
-            
-            m =1
+                if tdxdict.has_key(linecode):
+                    
+                   linesortlist.append(lsl) 
+                   
+                   xflinesortlist.remove(lsl) 
+                    
+        return tdxdict,linesortlist,tdxXfdict,xflinesortlist
+    
+    def dealBoardAmo(self,AxdLine_idf,AlineSortlist,KlineNum,KlineParam,threshold):
         
-        return 1
+       axdline_group = AxdLine_idf.groupby('hq_code')
+        
+       axdline_dict  = dict(list(axdline_group))
+       
+       ramolinedf    = pd.DataFrame()
+       
+       amolinedf     = pd.DataFrame()
+       
+       for ldict in axdline_dict:
+           
+           lineitem = axdline_dict[ldict]
+           
+           amolinedf = lineitem[['hq_code','hq_name','hq_date','hq_time','hq_chg','hq_xdamo']]
+                  
+           dataLen=len(amolinedf)
+                      
+           try:
+               amolinedf.index=xrange(dataLen)
+           except:
+               print amolinedf.iat[0,0]
+               print len(amolinedf)
+              
+           abnormalNum=0
+       
+           abnormalValues=[]
+       
+           abnormalSum=[]
+              
+           for i in range(dataLen-KlineNum,dataLen):
+               
+               print i 
+           
+               xdamo_Mean= amolinedf[i-KlineParam:i]['hq_xdamo'].mean()
+               
+               xdamo_Std =  amolinedf[i-KlineParam:i]['hq_xdamo'].std()
+           
+               if xdamo_Std != 0:                   
+                   amo_Std=amolinedf.loc[i,'hq_xdamostd']=(amolinedf.iloc[i]['hq_xdamo']-xdamo_Mean)/xdamo_Std
+               
+               else:
+                   amo_Std=0
+           
+               if amo_Std>=threshold:
+                  abnormalNum+=1
+                  abnormalValues.append(amo_Std)
+                  abnormalSum.append(amolinedf.iloc[i]['hq_xdamo'])
+            
+               abnormalValueSeries =pd.Series(abnormalValues)
+               abnormalSumSeries =pd.Series(abnormalSum)
+       
+           amolinedf['hq_abnNum']=abnormalNum
+           amolinedf['hq_abnavg']=abnormalValueSeries.mean()
+           amolinedf['hq_amoavg']=abnormalSumSeries.mean()
+           
+           amolinedf.dropna(inplace=True)
+           
+           amolinedf = amolinedf[amolinedf['hq_xdamostd']>threshold]
+           
+           #累计相对量比总值           
+           amolinedf['hq_xdamoMean'] = amolinedf['hq_xdamo'].mean()
+                      
+           ramolinedf = ramolinedf.append(amolinedf)
+           
+       
+       #test = dict(list(ramolinedf.groupby('hq_code')))
+           
+       del amolinedf,axdline_group,axdline_dict
+
+       gc.collect()
+                  
+       m  = 1
+             
+       return ramolinedf        
+        
+     
+    def plotTdxBoardData(self,indexDataTuple,bmidf,Abkdict,isXf):
+               
+        #indexDataTuple = (Abkcodestr,startDate,endDate,KlineType,indexType)
+        
+        Abkcodestr    = indexDataTuple[0]
+        
+        startDate     = indexDataTuple[1]
+        
+        endDate       = indexDataTuple[2]
+        
+        KlineType     = indexDataTuple[3]
+        
+        indexType     = indexDataTuple[4]
+        
+        fxflinedict   = indexDataTuple[5]
+        
+        tdxline_df    = self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
+        
+        
+        if 'hq_time' not in tdxline_df.columns:
+            tdxline_df['hq_time']  = '00:00:00'
+            
+         #获取所有指数排名数据(所有通达信行业) 
+        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
+        
+        #删除多余数据
+        del tdxline_df,Abkdict
+        
+        gc.collect()
+        
+        #取几日数据
+        KlineNum = 30
+        
+        #算多少日标准差
+        KlineParam =20
+        
+        #标准差阈值
+        threshold = 3
+        
+        #开始分析各板块异动
+        ramolinedf = self.dealBoardAmo(AxdLine_idf,AlineSortlist, KlineNum ,KlineParam,threshold)
+        
+        ramolinedf=ramolinedf.sort_values(['hq_abnNum','hq_abnavg'],ascending=False)
+
+        
+        #处理excel中的指数数据
+        ebmidf  = self.getExcelIndexData(bmidf,benchmarkName)    
+        
+        if isXf:
+            #对sortlist进行分离，求出行业与细分 
+           (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict)
+           
+           
+            
+           m =1 
+            
+        return 1     
         
 if '__main__'==__name__:  
         
@@ -2153,7 +2249,7 @@ if '__main__'==__name__:
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-09-11", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-09-01", "%Y-%m-%d")
     
     end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
