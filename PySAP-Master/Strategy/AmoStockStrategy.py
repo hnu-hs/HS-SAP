@@ -40,7 +40,9 @@ class AmoStrategy():
                 
         self.lineDir = '\\BoardIndex\\config\\通达信行业.txt'
         
-          
+        self.tdxLinefname = '\\PlotData\\export\\excel\\通达信行业'
+        
+        self.tdxConceptfname = '\\PlotData\\export\\excel\\通达信概念'
     
     #获取指数数据
     def getPlotIndexData(self,indexID,startDate,endDate,KlineType,indexType):
@@ -63,16 +65,14 @@ class AmoStrategy():
         return mktdf
     
     #获取所有股票数据
-    def getPlotStockData(self,startDate,endDate,KlineType):
+    def getPlotStockData(self,startDate,endDate,KlineType,securityID):
         
         mktindex =  self.mktindex
         
         mktdf = pd.DataFrame()
         
         mktstock  = mktindex.mktstock
-        
-        securityID='>=000001 ' 
-        
+                
         mktdf = mktstock.MktStockBarHistDataGet(securityID,startDate,endDate,KlineType)
                 
         return mktdf
@@ -107,7 +107,57 @@ class AmoStrategy():
         idf_ret = idf
         
         return idf_ret
-            
+    
+    def getBmiStockChg(self,istockdf,bkidf,bkstock_item):
+        
+        bkidf_tmp  = bkidf.copy()
+        
+        bkidf_tmp.rename(columns={'hq_code': 'bhq_code','hq_close': 'bhq_close', 'hq_date': 'bhq_date', 'hq_time': 'bhq_time', 'hq_chg': 'bhq_chg', 'hq_allchg': 'bhq_allchg', 'hq_vol': 'bhq_vol', 'hq_amo': 'bhq_amo'}, inplace=True) 
+                      
+        xdidf_ret = pd.DataFrame()
+        
+        bkstock_df = bkstock_item[['stock_id','stock_name']]
+                
+        if len(istockdf)>1:
+                        
+           idf_group  = istockdf.groupby('hq_code')
+           
+           idf_dict   = dict(list(idf_group))
+                             
+           for idict in idf_dict:
+                              
+               dictItem = idf_dict[idict]
+               
+               #开始分析各板块异动                              
+               dictItem  = self.getIndexOrStockChg(dictItem)
+               
+               if len(dictItem)>2:
+                                                      
+                   idf_ret  = pd.merge(dictItem,bkidf_tmp,left_on='index',right_on='index')
+#                   
+#                   print idf_ret
+                                                                     
+                   idf_ret['hq_xdamo']  = (idf_ret['hq_amo']/idf_ret['hq_allamo']*100).round(4)
+                   
+                   idf_ret['hq_xdamo']  = np.where(idf_ret['hq_xdamo']==np.inf, -1, idf_ret['hq_xdamo'])
+                   
+                   stock_df  = bkstock_df[bkstock_df['stock_id']==idict]
+                   
+                   stock_name = stock_df['stock_name'].tolist()[0]
+                   
+                   idf_ret['hq_name']   = stock_name
+                   
+                   idf_tmp = idf_ret [['hq_code','hq_name','hq_date','hq_time','hq_chg','hq_allchg','hq_xdamo']]
+                   
+                   idf_tmp = idf_tmp[1:]
+                   
+                   xdidf_ret = xdidf_ret.append(idf_tmp)
+        
+        del  bkidf_tmp        
+
+        gc.collect()         
+               
+        return xdidf_ret    
         
     def getAllStockChg(self,istockdf,bkidf_tmp):
                 
@@ -128,17 +178,14 @@ class AmoStrategy():
                if len(dictItem)>2:
                 
                    idf_ret  = self.getIndexOrStockChg(dictItem)
-                   
-                                      
+                                                         
                    idf_ret  = pd.merge(idf_ret,bkidf_tmp,left_on='index',right_on='index')
-#                   
-#                   print idf_ret
-                   
+
                    idf_ret['hq_xdallchg'] = idf_ret['hq_allchg']
                                   
                    idf_ret.loc[:,['hq_xdallchg']]  = idf_ret['hq_allchg']- idf_ret['bhq_allchg']
                                                   
-                   idf_ret['hq_xdamo']  = (idf_ret['hq_amo']/idf_ret['bhq_amo']*100).round(2)
+                   idf_ret['hq_xdamo']  = (idf_ret['hq_amo']/idf_ret['bhq_amo']*100).round(3)
                    
                    idf_ret['hq_xdamo'] = np.where(idf_ret['hq_xdamo']==np.inf, -1, idf_ret['hq_xdamo'])
                     
@@ -804,383 +851,114 @@ class AmoStrategy():
     
     #构建指数excel构架，,data_left,pic_lef,data_top,pic_top 分别代表数据，图像的 x，y坐标
     
-    def bulidExcelPic(self,bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_lef,data_top,pic_top,bkStockdict,xdsColumns,bkStockChgdict,exlnum,bkdNum,KlineType):      
-           
-        #取出排名指数,写入到excel文件中
-        sdata_left   = data_left + len(xdiColumns)+2
+    def bulidBoardExcelFrame(self,ebmidf,ramolist,linedf,stockdf,KlineType,boardType):
         
-        sdata_top    = data_top
-        
-        #汇总板块名称
-        bknamelist = []    
-                    
-        bkcodelist = []    
-        
-        bkdict ={}
+        #处理指数excel数据
+        data_left = 0    #数据起始列
 
-        #股票指数 坐标轴字典
-        sdataXY_list = []
+        data_top  = 0    #数据起始行
         
-        bkdataXY_dict ={}
+        Adate = datetime.now().strftime('%Y-%m-%d')
+    
+        pwd   =  os.getcwd()
         
-        bkXY_dict={}
+        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
         
-        bkcount  = 0 
+        #处理行业与个股
+        if boardType==1:
+                    
+           execlfname  = fpwd + self.tdxLinefname+ Adate +'-('+KlineType+').xlsx'
         
-        bkncount = 0
+           execlfname  = execlfname.decode()
         
-        bkfcount = exlnum*bkdNum
-        
-        bklcount = (exlnum+1)*bkdNum
-                          
-        if len(bkidf_list)>0:
-            lastfile = bkidf_list[-1]
-           
-        for dflist in  bkidf_list:
-           
-           print dflist[0]
-           
-           print bkcount
-           
-           sdataXY_list = []
-                      
-           bkcount += 1
+           wbk =xlsxwriter.Workbook(execlfname) 
+                   
+           wbk.add_worksheet(u'异动行业')
             
-           if len(dflist)==2:
-                              
-               bkidf_code  = dflist[0]
-               
-               bkidf_item  = dflist[1]
-               
-               bkidf_item = bkidf_item.dropna(how='any')
-               
-               bkhead = bkidf_item.head(1)
-               
-               bkname = bkhead['hq_name'].values
-               
-               bkname = bkname[0]
-               
-               bktile = bkname +'('+bkidf_code+')'
-               
-               bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
-               
-               bkidf_item['hq_time'] = bkidf_item['hq_time'].astype('str')
-               
-               bkidf_len   = len(bkidf_item)
-               
-               
-               
-               tmpbkist = [bkidf_code,data_top,data_left,bkidf_len]
-               
-               bkXY_dict[bkidf_code] = tmpbkist
-               #写入头
-               IData_Sheet.write_row(data_top, data_left,xdiColumns)
-               
-               #写入指数内容
-                   
-               for row in range(0,bkidf_len):   
-                  #for col in range(left,len(fields)+left):  
-                  
-                  tmplist  = bkidf_item[row:row+1].values.tolist()
-                                              
-                  datalist = tmplist[0]
-                                                  
-                  IData_Sheet.write_row(data_top+row+1, data_left,datalist)
-               
-               #写入股票内容
-               if bkStockdict.has_key(int(bkidf_code)) and bkcount>=bkfcount+1 and bkcount<=bklcount+1:
-                   
-                   bkncount +=1 
-                   #对板块中的股票进行排序
-                   if bkStockChgdict.has_key(int(bkidf_code)):
-                       
-                       stockchgdict = bkStockChgdict[int(bkidf_code)]
-                               
-                       stocklist= sorted(stockchgdict.items(), key=lambda d:d[1], reverse = True)                   
-                   
-                   
-                   bkStockItem = bkStockdict[int(bkidf_code)] 
-                                      
-                   bkStockItem = bkStockItem.dropna(how='any')
-                   
-                   #按股票代码进行分类
-                   bkStockGroup = bkStockItem.groupby('stock_id')
-                   
-                   #生成股票dict
-                   tStockdict  = dict(list(bkStockGroup))
-                                      
-                   for slist in stocklist: 
-                          
-                       scode     = slist[0]
-                       
-                       if tStockdict.has_key(scode):
-                       
-                           stockitem = tStockdict[scode]
-                           
-                           stockitem['hq_date'] = stockitem['hq_date'].astype(str)
-                            
-                           stockitem['hq_time'] = stockitem['hq_time'].astype('str')
-                           
-                           stocklen  = len(stockitem)
-                                                  
-                           snamelist = stockitem['stock_name'].tolist()
-                                                  
-                           stockname =  snamelist[0]
-                           
-                           tmpdatalist = [scode,sdata_top,sdata_left,stocklen,stockname]
-                                              
-                           IData_Sheet.write_row(sdata_top, sdata_left,xdsColumns)
-                           
-                           for srow in range(0,stocklen):   
-                              #for col in range(left,len(fields)+left):  
-                              
-                              tmplist  = stockitem[srow:srow+1].values.tolist()
-                                                          
-                              datalist = tmplist[0]
-                                                                                            
-                              IData_Sheet.write_row(sdata_top+srow+1, sdata_left,datalist)
-                                   
-                           
-                           sdataXY_list.append(tmpdatalist)
-                           
-                           sdata_top  =    sdata_top +   stocklen +2
-                   
-                   sdata_left = sdata_left + len(xdsColumns) + 1 
-               
-               bkdataXY_dict[bkidf_code] = sdataXY_list
-               
-               sdata_top = 0
-               
-               idxstr  = u'指数数据'
-               
-               #指数参数设置
-               shift =10
-               
-               data_top2 = 0
-               
-               data_left2 = 0
-               
-               shift2  = 4
-               
-               style   = 1
-               
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style,KlineType)
-                    
-               #画出双轴对比图
-               
-               QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
-                #bg+=19       
-             
-               pic_lef+=len(xdiColumns)+2+10 
-               
-               #画成交量与成交金额相对相对量比
-               
-               shift =12
-               
-               data_top2 = data_top
-               
-               data_left2 = data_left
-               
-               shift2  = 12
-               
-               style   = 2
-               
-               bk_chart = self.bulidChart(wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len,shift2,style,KlineType)
-                    
-               #画出双轴对比图
-               
-               QR_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
-                #bg+=19       
-                      
-               data_top+=bkidf_len +2
-               
-               pic_top+=23
-               
-               if lastfile!=dflist: 
-                   pic_lef-=len(xdiColumns) +2+10 
+           wbk.add_worksheet(u'异动行业（个股）')   
+            
+           IData_Sheet = wbk.add_worksheet(u'指数数据')
+                
+        if boardType==2:
            
-               #此处开始处理excel分类显示指数组，每N个指数一起显示
-                         
-               bkNum = 4
-               
-               bkpos  = bkname.find('-')
-               
-               if bkcount>=bkfcount+1 and bkcount<=bklcount:
-                   
-                   if bkpos!=-1:
-                      
-                      tmpname = bkname[bkpos+1:]
-                   
-                      bknamelist.append(tmpname)
-                      
-                      bkcodelist.append(dflist[0])
-                      
-                      bkdict[dflist[0]] = bkname
-                      
-                   else:
-                      
-                      bkcodelist.append(dflist[0])
-                      
-                      bknamelist.append(bkname) 
-                      
-                      bkdict[dflist[0]] = bkname
-                   
-                   #如果不为0，加入名称       
-                   
-                   if bkncount % bkNum ==0 or bkcount == bklcount:
-                       
-                       bknames   = ','.join(bknamelist)
-                       
-                       bknames   ='(' + bknames +')'
-                       
-                       bknamelist = []
-                       
-                       tmp_Sheet = wbk.add_worksheet(bknames)
-                      
-                       idxstr  = u'指数数据'
-                                           
-                       #指数参数设置
-                       shift =12
-                       
-                       bkdata_top = 0
-                       
-                       bkdata_top2 = 0
-                                          
-                       bkdata_left = data_left
-                       
-                       bkdata_left2 = 0
-                                          
-                       shift2  = 4
-                       
-                       style   = 1
-                       
-                       picbk_top = 1
-                       
-                       picbk_lef = 1
-                       
-                       #先画指数，后画股票                                        
-                       for bkcl in bkcodelist:
-                           
-                           if bkXY_dict.has_key(bkcl):
-                               
-                               picbk_top = 1
-                               
-                               #取出板块指数                             
-                               bkitem  = bkXY_dict[bkcl]
-                               
-                               #获取X坐标                           
-                               bkdata_top = bkitem[1]
-                               
-                               #获取Y坐标
-                               bkdata_left = bkitem[2]
-                               
-                               #获取数据长度
-                               bkdata_len  = bkitem[3]
-                               
-                               bkdata_top2 = 0
-                               
-                               bktiles = bkdict[bkcl]
-                               
-                               shift =10
-                               
-                               style   = 1
-                                    
-                               shift2  = 4
-                               
-                               bkdata_left2 = 0 
-                                                                                  
-                               bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style,KlineType)
-                               
-                               #画出双轴对比图
-                                                          
-                               tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
-                                #bg+=19       
-                               
-                               picbk_top+=23
-                               
-                               #画成交量与成交金额相对相对量比
-                               
-                               shift =12
-                               
-                               bkdata_top2 = bkdata_top
-                               
-                               bkdata_left2 = data_left
-                               
-                               shift2  = 12
-                               
-                               style   = 2
-                                                                                  
-                               bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkdata_top2,bkdata_left2,bkidf_len,shift2,style,KlineType)
-                                    
-                               #画出双轴对比图
-                               
-                               tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
-                               
-                               
-                               picbk_top+=23
-                                                      
-                               #picbk_lef += len(xdiColumns)+2
-                               
-                               #获取指数中的股票
-                               if bkdataXY_dict.has_key(bkcl) :
-                                   
-                                   bkdataItem = bkdataXY_dict[bkcl]                                                            
-                                                                  
-                                   for bksl in bkdataItem:
-                                       
-                                       if len(bksl)==5:              
-                                          #获取股票代码 
-                                          bkstockcode  = bksl[0] 
-                                          
-                                          #获取股票X坐标
-                                          bkstock_X    = bksl[1] 
-                                    
-                                          #获取股票Y坐标
-                                          bkstock_Y    = bksl[2]
-                                          
-                                          #获取股票长度
-                                          bkstock_len  = bksl[3]
-                                          
-                                          bkstockname  = bksl[4]
-                                          
-                                          if bkstock_len>0:
-                                    
-                                              bktiles = bkstockname+'('+str(bkstockcode)+')'
-                                               
-                                              shift =10
-                                               
-                                              style   = 3
-                                                    
-                                              shift2  = 10
-                                               
-                                              bkdata_left2 = 0 
-                                              
-                                              bk_chart = self.bulidChart(wbk,bkdata_top,bkdata_left,bkdata_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style,KlineType)
-                                                                         
-                                              tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
-                                              
-                                              picbk_top+=23
-                                                                                    
-                                              #画成交量与成交金额相对相对量比
-                                              shift =12
-                                               
-                                              style   = 2
-                                                    
-                                              shift2  = 12
-                                                                                                  
-                                              bk_chart = self.bulidChart(wbk,bkstock_X,bkstock_Y,bkstock_len,bktiles,idxstr,shift,bkstock_X,bkstock_Y,bkstock_len,shift2,style,KlineType)
-                                                    
-                                              #画出双轴对比图
-                                               
-                                              tmp_Sheet.insert_chart( picbk_top, picbk_lef,bk_chart)
-                                                
-                                              picbk_top+=23
-                                          
-                               picbk_lef += len(xdiColumns)+2 +10                                     
-                       
-                       bkcodelist = []                                  
+           execlfname  = fpwd + self.tdxConceptfname+ Adate +'-('+KlineType+').xlsx'
         
-        return wbk,pic_lef,bkdataXY_dict,bkXY_dict
+           execlfname  = execlfname.decode()
+        
+           wbk =xlsxwriter.Workbook(execlfname) 
+                   
+           wbk.add_worksheet(u'异动概念')
+            
+           wbk.add_worksheet(u'异动概念（个股）')   
+            
+           IData_Sheet = wbk.add_worksheet(u'指数数据')
+                           
+        #IData_Sheet.hide()
+                
+        xdiColumns= list([u'板块代码', u'板块名称', u'日期',u'时间' ,u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
+        
+        stockColumns = list([u'股票代码', u'股票名称', u'日期',u'时间' ,u'相对涨跌幅', u'累计相对涨跌幅',u'相对金额比'])
+        
+        ebmidf.fillna(method='bfill',inplace=True)
+        
+        #基准数据写入数据sheet中
+        if len(ebmidf)>0:
+            
+            bmidf_group = ebmidf.groupby('hq_code')
+    
+            bmi_list = list(bmidf_group)
+            
+            bmiColumns = list([u'基准指数代码', u'基准指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
+            
+            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
+                  
+            (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
+            
+            data_left = data_left +len(bmiColumns) +2
+           
+        #行业指数，概念指数 数据写入数据sheet中
+        if len(ramolist)>0 :
+                        
+            axdtmp_group = linedf.groupby('hq_code',sort=False)
+    
+            abkidf_list = list(axdtmp_group)
+            
+            #abkColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
+            
+            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
+                  
+            (IData_Sheet,AbkXY_dict) = self.bulidIndexDataToExcel(abkidf_list,IData_Sheet,xdiColumns,data_left,data_top)
+            
+            data_left = data_left +len(xdiColumns) +2
+            
+            
+            stocktmp_group = stockdf.groupby('hq_code',sort=False)
+    
+            stockidf_list = list(stocktmp_group)
+            
+            #abkColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
+            
+            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
+                  
+            (IData_Sheet,stockXY_dict) = self.bulidIndexDataToExcel(stockidf_list,IData_Sheet,xdiColumns,data_left,data_top)
+            
+            data_left = data_left +len(xdiColumns) +2
+            
+            #处理规模指数
+            XY_Tuple = (idataXY_dict,AbkXY_dict,stockXY_dict)
+            
+            ColumnsTuple =(bmiColumns,xdiColumns,stockColumns)
+        
+            #基准指数坐标   
+            wbk  = self.bulidAllExcelPic(wbk,IData_Sheet,XY_Tuple,ColumnsTuple,ramolist)
+            
+            
+        
+        IData_Sheet.hide() 
+        
+        wbk.close()            
+        
+        return wbk,pic_lef
         
     #统一画图模块
     def bulidUniformExcelPic(self,wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName):
@@ -1344,25 +1122,19 @@ class AmoStrategy():
         return wbk
            
         
-    def bulidAllExcelPic(self,wbk,IData_Sheet,xdiColumns,boardTuple):  
+    def bulidAllExcelPic(self,wbk,IData_Sheet,XY_Tuple,ColumnsTuple,ramolist):
         
-        #  boardTuple =(idataXY_dict,scaleIndex,scaleXY_dict,bkcodestr,xfbkcodestr,AbkXY_dict,scaleDict)
-           
-        #取出排名指数,写入到excel文件中
-           
-        idataXY_dict  = boardTuple[0]
+        idataXY_dict  = XY_Tuple[0]        
         
-        scalestr      = boardTuple[1]
+        AbkXY_dict    = XY_Tuple[1]
         
-        scaleXY_dict  = boardTuple[2]
+        stockXY_dict  = XY_Tuple[2]
         
-        bkcodestr     = boardTuple[3]
+        bmiColumns    = ColumnsTuple[0]
                 
-        xfbkcodestr   = boardTuple[4]
-        
-        AbkXY_dict    = boardTuple[5]
-        
-        scaleDict     = boardTuple[6]
+        xdiColumns    = ColumnsTuple[1]
+                        
+        stockColumns  = ColumnsTuple[2]        
         
         #处理基准指数数据（以399317为基准）
         if len(idataXY_dict)>0:
@@ -1375,86 +1147,24 @@ class AmoStrategy():
            
         #统一画图模块
          
-        #画规模指数  
-        SheetName =u'规模指数' 
-        gm_tuple =(scalestr,scaleDict,idataXY_dict,scaleXY_dict,bench_XY,bench_key)                
-        wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,xdiColumns,gm_tuple,SheetName)
         
         #画通达信板块指数
         SheetName =u'行业指数'
         bkp_tuple =(bkcodestr,Abkdict,idataXY_dict,AbkXY_dict,bench_XY,bench_key)
         wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName)
         
+        
+        #画规模指数  
+        SheetName =u'规模指数' 
+        gm_tuple =(scalestr,scaleDict,idataXY_dict,scaleXY_dict,bench_XY,bench_key)                
+        wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,stockColumns,gm_tuple,SheetName)
+        
         #画通达信细分板块指数        
         SheetName =u'行业细分指数'
         xfbkp_tuple =(xfbkcodestr,Abkdict,idataXY_dict,AbkXY_dict,bench_XY,bench_key)        
         wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,xdiColumns,xfbkp_tuple,SheetName)
         
-        
-         
-#        
-#        tmp_Sheet = wbk.add_worksheet(u'细分行业')
-#        
-#        pic_top = 0 
-#        
-#        pic_lef = 0
-#        
-#        if fxflinedict.has_key(0) :
-#           
-#           flinedf  = fxflinedict[0]
-#                      
-#           flinecodes = flinedf['Lcode'].tolist()
-#           
-#           if len(flinecodes)>0:
-#               lastfile = flinecodes[-1]
-#           
-#           for flcode in flinecodes:
-#               
-#               if fxflinedict.has_key(flcode):
-#                  
-#                  fxflinedf  = fxflinedict[flcode]
-#                  
-#                  fxflinecodes = fxflinedf['Lcode'].tolist()
-#                  
-#                  idxstr  = u'指数数据'                  
-#                   
-#                  bktiles = '(' + str(flcode) +')' 
-#                   
-#                  #指数参数设置
-#                  shift =10
-#                   
-#                  shift2  = 6
-#                   
-#                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2,KlineType)
-#                        
-#                   #画出双轴对比图
-#                   
-#                  tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
-#                    #bg+=19       
-#                 
-#                  pic_lef+=len(xdiColumns)+2+10 
-#                   
-#                  #画成交量与成交金额相对相对量比
-#                   
-#                  shift =12
-#                   
-#                  shift2  = 13
-#                         
-#                  bk_chart = self.bulidALLChart_XF(wbk,bkXY_dict,flcode,fxflinecodes,bktiles,idxstr,shift,shift2,KlineType)
-#                        
-#                  #画出双轴对比图
-#                   
-#                  tmp_Sheet.insert_chart( pic_top, pic_lef,bk_chart)
-#                    #bg+=19       
-#                          
-#                  dstart_top = data_top
-#                   
-#                  pic_top+=23
-#                   
-#                  if lastfile!=flcode: 
-#                       pic_lef-=len(xdiColumns) +2+10 
-#                   
-               
+              
         return wbk
         
     # 在excel中插入基准指数的数据，lef，top 分别代表 x，y坐标
@@ -1479,16 +1189,12 @@ class AmoStrategy():
                bkidf_len   = len(bkidf_item)
                
                tmpdatalist = [bkidf_code,top,left,bkidf_len]
-               
-               
+                              
                idataXY_dict[int(bkidf_code)] = tmpdatalist
                
                #写入头
                IData_Sheet.write_row(top, left,bmiColumns)
                
-               #tmplist = []
-               
-               #写入内容
                    
                for row in range(0,bkidf_len):   
                   #for col in range(left,len(fields)+left):  
@@ -1607,124 +1313,6 @@ class AmoStrategy():
       
             wbk.close()
         
-     
-    def bulidAllIndexExcelFrame(self,bmidf,axdtmp_idf,bkcodestr,scaleIndex,xdscale_idf,Abkdict,scaleDict,KlineType,fxflinedict):
-                
-        data_left = 0    #数据起始列
-
-        data_top  = 0    #数据起始行
-        
-        
-        Adate = datetime.now().strftime('%Y-%m-%d')
-    
-        pwd   =  os.getcwd()
-        
-        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
-        
-        execlfname  = fpwd + self.BAfname+ Adate +'-('+KlineType+').xlsx'
-        
-        execlfname  = execlfname.decode()
-        
-        wbk =xlsxwriter.Workbook(execlfname)  
-        
-        
-        Scale_Sheet   = wbk.add_worksheet(u'规模指数')
-        
-        Line_Sheet    = wbk.add_worksheet(u'行业指数')
-        
-        XfLine_Sheet  = wbk.add_worksheet(u'行业细分指数')
-    
-        IData_Sheet   = wbk.add_worksheet(u'指数数据')
-                
-        #IData_Sheet.hide()
-        
-        
-        xdiColumns= list([u'板块代码', u'板块名称', u'日期',u'时间' ,u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
-              
-               
-        bmidf.fillna(method='bfill',inplace=True)
-        
-        #基准数据写入数据sheet中
-        if len(bmidf)>0:
-            bmidf_group = bmidf.groupby('hq_code')
-    
-            bmi_list = list(bmidf_group)
-            
-            bmiColumns = list([u'基准指数代码', u'基准指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
-            
-            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
-                  
-            (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
-            
-            data_left = data_left +len(bmiColumns) +2
-        
-        xdscale_idf.fillna(method='bfill',inplace=True)
-        #规模指数数据写入数据sheet中
-        if len(xdscale_idf)>0:
-            scaleidf_group = xdscale_idf.groupby('hq_code')
-    
-            scaleidf_list = list(scaleidf_group)
-            
-            #scaleColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
-            
-            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
-                  
-            (IData_Sheet,scaleXY_dict) = self.bulidIndexDataToExcel(scaleidf_list,IData_Sheet,xdiColumns,data_left,data_top)
-            
-            data_left = data_left +len(xdiColumns) +2
-            
-            
-        axdtmp_idf.fillna(method='bfill',inplace=True)
-        #规模指数数据写入数据sheet中
-        if len(axdtmp_idf)>0:
-            
-            axdtmp_group = axdtmp_idf.groupby('hq_code')
-    
-            abkidf_list = list(axdtmp_group)
-            
-            #abkColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
-            
-            #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
-                  
-            (IData_Sheet,AbkXY_dict) = self.bulidIndexDataToExcel(abkidf_list,IData_Sheet,xdiColumns,data_left,data_top)
-            
-            data_left = data_left +len(xdiColumns) +2
-            
-            #基准指数坐标,
-            boardTuple =(idataXY_dict,scaleIndex,scaleXY_dict,bkcodestr,xfbkcodestr,AbkXY_dict,scaleDict)
-                
-            wbk  = self.bulidAllExcelPic(wbk,IData_Sheet,xdiColumns,boardTuple)
-            
-            
-            
-#           bulidAllExcelPic
-#        xdtmp_idf.fillna(method='bfill',inplace=True)
-#        
-#        if len(xdtmp_idf)>0:
-#            
-#            #数据分组        
-#            xdtmp_group = xdtmp_idf.groupby('hq_code',sort=False)
-#            
-#            bkidf_list= list(xdtmp_group)
-#                        
-#            (wbk,pic_left)  = self.bulidAllExcelPic(bkidf_list,wbk,QR_Sheet,IData_Sheet,xdiColumns,data_left,pic_left,data_top,pic_top,fxflinedict)
-#            
-#            data_left = data_left+xdiColumnlens+2
-        
-        IData_Sheet.hide() 
-#        
-#        wbk.worksheets_objs.reverse()
-#        
-#        if fsheet.name==u'指数数据':
-#            wbk.worksheets_objs.append(fsheet)
-#        
-#        for ti in wbk.worksheets_objs:
-#            
-#            print ti.name
-            
-        wbk.close()
-
-               
     #处理指数数据
     def getExcelIndexData(self,bmidf,benchmarkName):
         
@@ -1972,15 +1560,12 @@ class AmoStrategy():
         
         isXf  = True
         
+        boardType =1 
+        
         indexDataTuple = (Abkcodestr,startDate,endDate,KlineType,indexType,fxflinedict)
         
-        amolinedf = self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,isXf)
+        amolinedf = self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType)
         
-        
-        #处理excel中的指数数据
-        ebmidf  = self.getExcelIndexData(bmidf,benchmarkName)    
-                
-   
 #            
 #         #获取所有指数排名数据(所有通达信行业) 
 #        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
@@ -2093,7 +1678,7 @@ class AmoStrategy():
                     
         return tdxdict,linesortlist,tdxXfdict,xflinesortlist
     
-    def dealBoardAmo(self,AxdLine_idf,AlineSortlist,KlineNum,KlineParam,threshold):
+    def dealBoardAmo(self,AxdLine_idf,KlineNum,KlineParam,threshold):
         
        axdline_group = AxdLine_idf.groupby('hq_code')
         
@@ -2102,6 +1687,8 @@ class AmoStrategy():
        ramolinedf    = pd.DataFrame()
        
        amolinedf     = pd.DataFrame()
+       
+       linedf        = pd.DataFrame()
        
        for ldict in axdline_dict:
            
@@ -2151,26 +1738,24 @@ class AmoStrategy():
            
            amolinedf.dropna(inplace=True)
            
-           amolinedf = amolinedf[amolinedf['hq_xdamostd']>threshold]
+           if len(amolinedf)>0:
+               
+               amolinedf = amolinedf[amolinedf['hq_xdamostd']>threshold]
+                                     
+               ramolinedf = ramolinedf.append(amolinedf)
+               
+               linedf     = linedf.append(lineitem)
            
-           #累计相对量比总值           
-           amolinedf['hq_xdamoMean'] = amolinedf['hq_xdamo'].mean()
-                      
-           ramolinedf = ramolinedf.append(amolinedf)
-           
-       
        #test = dict(list(ramolinedf.groupby('hq_code')))
            
        del amolinedf,axdline_group,axdline_dict
 
        gc.collect()
-                  
-       m  = 1
-             
-       return ramolinedf        
+                 
+       return ramolinedf,linedf        
         
      
-    def plotTdxBoardData(self,indexDataTuple,bmidf,Abkdict,isXf):
+    def plotTdxBoardData(self,indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType):
                
         #indexDataTuple = (Abkcodestr,startDate,endDate,KlineType,indexType)
         
@@ -2186,6 +1771,10 @@ class AmoStrategy():
         
         fxflinedict   = indexDataTuple[5]
         
+        ramolist      = []
+        
+        stockdf     = pd.DataFrame()
+        
         tdxline_df    = self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
         
         
@@ -2195,13 +1784,14 @@ class AmoStrategy():
          #获取所有指数排名数据(所有通达信行业) 
         (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
         
+                       
         #删除多余数据
         del tdxline_df,Abkdict
         
         gc.collect()
         
         #取几日数据
-        KlineNum = 30
+        KlineNum = 5
         
         #算多少日标准差
         KlineParam =20
@@ -2210,22 +1800,72 @@ class AmoStrategy():
         threshold = 3
         
         #开始分析各板块异动
-        ramolinedf = self.dealBoardAmo(AxdLine_idf,AlineSortlist, KlineNum ,KlineParam,threshold)
+        (ramolinedf,linedf) = self.dealBoardAmo(AxdLine_idf, KlineNum ,KlineParam,threshold)
         
         ramolinedf=ramolinedf.sort_values(['hq_abnNum','hq_abnavg'],ascending=False)
-
         
+        ramoline_group = ramolinedf.groupby('hq_code',sort=False)
+        
+        ramolinelist  = list(ramoline_group)
+        
+        ramolen       = len(ramolinelist)
+        
+        ramoRange     = 5
+        
+        bkstock_group = Abkxfdf.groupby('board_id')
+        
+        bkstock_dict  = dict(list(bkstock_group))
+        
+        
+        if int(ramolen*0.3)>=5:
+            ramoRange = int(ramolen*0.3)
+        
+        if  ramolen<=5:
+            ramoRange = ramolen
+   
+        for rlen in range(ramoRange):
+            
+            ramoitem = ramolinelist[rlen]
+            
+            ramocode = ramoitem[0]
+
+            ramodf   = ramoitem[1]
+            
+            if bkstock_dict.has_key(ramocode):
+                
+                bkstock_item = bkstock_dict[ramocode]
+                
+                bkstock_id   = bkstock_item['stock_id'].astype('str')
+                
+                bkcodestr = ','.join(bkstock_id)
+                
+                bkcodestr = 'in('+bkcodestr+')'
+                
+                #获取股票排名数据 
+                stock_df     =  self.getPlotStockData(startDate,endDate,KlineType,bkcodestr)
+                               
+                xdidf_ret   =  self.getBmiStockChg(stock_df,bmidf,bkstock_item)
+                
+                (stocklinedf,slinedf) =  self.dealBoardAmo(xdidf_ret, KlineNum ,KlineParam,threshold)
+                
+                stocklinedf =  stocklinedf.sort_values(['hq_abnNum','hq_abnavg'],ascending=False)
+                
+                ramotuple   =(ramocode,ramodf,stocklinedf)
+                
+                ramolist.append(ramotuple)
+                
+                stockdf = stockdf.append(slinedf)
+                        
         #处理excel中的指数数据
         ebmidf  = self.getExcelIndexData(bmidf,benchmarkName)    
-        
+                
         if isXf:
             #对sortlist进行分离，求出行业与细分 
-           (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict)
-           
-           
+           (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict) 
+        
             
-           m =1 
-            
+        self.bulidBoardExcelFrame(ebmidf,ramolist,linedf,stockdf,KlineType,boardType)
+        
         return 1     
         
 if '__main__'==__name__:  
@@ -2245,6 +1885,8 @@ if '__main__'==__name__:
     
     KlineDict ={}
     
+    
+    Adate='2017-09-18'    
     #K线时间类型    
     KlineType ='5M'
         
@@ -2306,7 +1948,6 @@ if '__main__'==__name__:
     tdxconceptTuple =(cfdict,cfcodestr,cfdf_xf)
     
     for kdict in KlineDict:
-        
        #指数分类对比图
        KlineType = kdict
        
