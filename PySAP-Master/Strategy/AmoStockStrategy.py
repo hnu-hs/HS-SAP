@@ -519,28 +519,60 @@ class AmoStrategy():
         return xdidf_ret,dict_ret
             
     
-    def bulidChart(self,wbk,data_top,data_left,bkidf_len,bktile,idxstr,shift,data_top2,data_left2,bkidf_len2,shift2,style,KlineType):
+    
+    def bulidChart(self,wbk,bkchar_tuple,bktiles,idxstr,KlineType):
         
         bk_chart = wbk.add_chart({'type': 'line'})
                
         bk_chart.set_style(4)
+        
+        
+        bench_XY   = bkchar_tuple[0]
+        
+        bkXY_list  = bkchar_tuple[1]
+        
+        shift      = bkchar_tuple[2]
+        
+        shift2     = bkchar_tuple[3]
+        
+        style      = bkchar_tuple[4]
+        
         
         if KlineType=='5M':
            interval_unit = 48
         else:           
            interval_unit = 7 
        
+       
+        data_top2   = bench_XY[1]
+        
+        data_left2  = bench_XY[2]
+        
+        bkidf_len2  = bench_XY[3]        
+    
+        bkXY = bkXY_list[2]
+        
+        data_top   = bkXY[1]
+        
+        data_left  = bkXY[2]
+        
+        bkidf_len  = bkXY[3]
+                   
+        
         #向图表添加数据 
         
         if style==1:
+            
+        
+            
             bk_chart.add_series({
              'name':[idxstr, data_top+1, data_left+1],
              'categories':[idxstr, data_top+1, data_left+2, data_top+bkidf_len, data_left+2],
              'values':[idxstr, data_top+1, data_left+shift, data_top+bkidf_len, data_left+shift],
              'line':{'color':'red'},
                     
-             })            
-            
+             })    
+        
             bk_chart.add_series({
              'name':[idxstr, data_top2+1, data_left2+1],
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
@@ -593,7 +625,7 @@ class AmoStrategy():
         #bold = wbk.add_format({'bold': 1})
      
      
-        bk_chart.set_title({'name':bktile,
+        bk_chart.set_title({'name':bktiles,
                            'name_font': {'size': 10, 'bold': True}
                           })
                                    
@@ -615,7 +647,6 @@ class AmoStrategy():
            
         
         return bk_chart
-    
      
     
     def bulidALLChart(self,wbk,bkchar_tuple,bktiles,idxstr,KlineType):
@@ -848,10 +879,9 @@ class AmoStrategy():
            
         
         return bk_chart     
+      
     
-    #构建指数excel构架，,data_left,pic_lef,data_top,pic_top 分别代表数据，图像的 x，y坐标
-    
-    def bulidBoardExcelFrame(self,ebmidf,ramolist,linedf,stockdf,KlineType,boardType):
+    def bulidBoardExcelFrame(self,ebmidf,ramolist,Abkdict,bkcodes,linedf,stockdf,KlineType,boardType):
         
         #处理指数excel数据
         data_left = 0    #数据起始列
@@ -862,7 +892,7 @@ class AmoStrategy():
     
         pwd   =  os.getcwd()
         
-        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
+        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep)
         
         #处理行业与个股
         if boardType==1:
@@ -875,8 +905,6 @@ class AmoStrategy():
                    
            wbk.add_worksheet(u'异动行业')
             
-           wbk.add_worksheet(u'异动行业（个股）')   
-            
            IData_Sheet = wbk.add_worksheet(u'指数数据')
                 
         if boardType==2:
@@ -888,9 +916,7 @@ class AmoStrategy():
            wbk =xlsxwriter.Workbook(execlfname) 
                    
            wbk.add_worksheet(u'异动概念')
-            
-           wbk.add_worksheet(u'异动概念（个股）')   
-            
+           
            IData_Sheet = wbk.add_worksheet(u'指数数据')
                            
         #IData_Sheet.hide()
@@ -940,7 +966,7 @@ class AmoStrategy():
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
                   
-            (IData_Sheet,stockXY_dict) = self.bulidIndexDataToExcel(stockidf_list,IData_Sheet,xdiColumns,data_left,data_top)
+            (IData_Sheet,stockXY_dict) = self.bulidIndexDataToExcel(stockidf_list,IData_Sheet,stockColumns,data_left,data_top)
             
             data_left = data_left +len(xdiColumns) +2
             
@@ -950,7 +976,7 @@ class AmoStrategy():
             ColumnsTuple =(bmiColumns,xdiColumns,stockColumns)
         
             #基准指数坐标   
-            wbk  = self.bulidAllExcelPic(wbk,IData_Sheet,XY_Tuple,ColumnsTuple,ramolist)
+            wbk  = self.bulidAllExcelPic(wbk,IData_Sheet,XY_Tuple,ColumnsTuple,ramolist,Abkdict,bkcodes,boardType)
             
             
         
@@ -958,7 +984,152 @@ class AmoStrategy():
         
         wbk.close()            
         
-        return wbk,pic_lef
+        return wbk
+        
+    #统一画图模块
+    def bulidSigleExcelPic(self,wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName):    
+            
+       #bkp_tuple =(bkcodestr,Abkdict,idataXY_dict,bench_XY)
+        sheetflag = False
+        
+        lastflag  = False        
+        
+        bench_key = ''
+        
+        bkcodestr       = bkp_tuple[0]
+        
+        Abkdict         = bkp_tuple[1]
+        
+        idataXY_dict    = bkp_tuple[2]
+        
+        AbkXY_dict      = bkp_tuple[3]
+        
+        bench_XY        = bkp_tuple[4]
+        
+        bench_key       = bkp_tuple[5]
+        
+        for qrsheet in wbk.worksheets_objs:
+            
+            if SheetName==qrsheet.name:
+               sheetflag   = True  
+               QR_Sheet    = qrsheet
+               
+        
+        if not sheetflag:
+            
+            QR_Sheet = wbk.add_worksheet(SheetName)
+        
+                   
+        xdiColumnlens  = len(xdiColumns)
+        
+        #画模块
+        headStr='强弱排名（涨幅）'
+        
+        headvol= '量比（金额）'
+        
+         
+        red = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'C0504D','font_size':16,'font_color':'white'})
+        
+        blue = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'8064A2','font_size':16,'font_color':'white'})
+        #间隔格式
+        JG = wbk.add_format({'bg_color':'CCC0DA'})
+        
+        #处理第一行excel格式
+        QR_Sheet.merge_range(0,0,1,xdiColumnlens+10,headStr,red)         
+        QR_Sheet.set_column(xdiColumnlens+1+10,xdiColumnlens+1+10,0.3,JG)
+
+        QR_Sheet.merge_range(0,xdiColumnlens+2+10,1,2*(xdiColumnlens+10)+2,headvol,blue)               
+        QR_Sheet.set_column(2*xdiColumnlens+3+20,2*xdiColumnlens+3+20,0.3,JG)
+               
+           
+        pic_left  = 0    #图像起始列 
+                
+        pic_top   = 2    #图像起始行
+                           
+   
+        bkidf_list =bkcodestr.split(',')
+       
+        if len(bkidf_list)>0:
+            lastfile = bkidf_list[-1]
+           
+        for dflist in  bkidf_list:
+                       
+           bkidf_code  = dflist
+           
+           bkname = ''
+           
+           if lastfile==dflist: 
+               lastflag = True
+           
+           test1 = Abkdict.has_key(int(dflist))
+           
+           test2 = AbkXY_dict.has_key(int(dflist))
+           
+           test3 = idataXY_dict.has_key(int(bench_key))
+           
+           if Abkdict.has_key(int(dflist)) and AbkXY_dict.has_key(int(dflist)) and idataXY_dict.has_key(int(bench_key)):
+               
+              
+              bkname = Abkdict[int(dflist)]
+              
+              bkname = bkname.replace(u'通达信行业-','').replace(u'通达信细分行业-','').replace(u'通达信概念-','')
+              
+              bktiles = bkname +'('+bkidf_code+')'
+              
+              bk_XY = AbkXY_dict[int(dflist)] 
+              
+              
+              bkXY_Tuple =(bkidf_code,bkname,bk_XY)
+              
+            
+              idxstr  = u'指数数据'
+               
+              #指数参数设置
+              shift =10
+               
+              shift2  = 4
+               
+              style   = 1
+             
+             
+              bkchar_tuple =(bench_XY,bkXY_Tuple,shift,shift2,style)
+           
+              bk_chart = self.bulidChart(wbk,bkchar_tuple,bktiles,idxstr,KlineType)
+              #画出双轴对比图
+           
+              QR_Sheet.insert_chart( pic_top, pic_left,bk_chart)
+              #bg+=19       
+         
+              pic_left+=len(xdiColumns)+2+10 
+           
+              #画成交量与成交金额相对相对量比
+           
+              shift =12
+                          
+              shift2  = 13
+           
+              style  =2
+             
+              bkchar_tuple2 =(bench_XY,bkXY_Tuple,shift,shift2,style)
+             
+             
+              bk_chart = self.bulidChart(wbk,bkchar_tuple2,bktiles,idxstr,KlineType)
+                
+              #画出双轴对比图
+           
+              QR_Sheet.insert_chart( pic_top, pic_left,bk_chart)
+             #bg+=19       
+           
+              pic_top+=23
+           
+              if lastfile!=dflist: 
+                 pic_left-=len(xdiColumns) +2+10 
+           
+              bktiles =''
+                 
+        
+        return wbk
+        
         
     #统一画图模块
     def bulidUniformExcelPic(self,wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName):
@@ -1122,16 +1293,14 @@ class AmoStrategy():
         return wbk
            
         
-    def bulidAllExcelPic(self,wbk,IData_Sheet,XY_Tuple,ColumnsTuple,ramolist):
+    def bulidAllExcelPic(self,wbk,IData_Sheet,XY_Tuple,ColumnsTuple,ramolist,Abkdict,bkcodes,boardType):
         
         idataXY_dict  = XY_Tuple[0]        
         
         AbkXY_dict    = XY_Tuple[1]
         
         stockXY_dict  = XY_Tuple[2]
-        
-        bmiColumns    = ColumnsTuple[0]
-                
+                    
         xdiColumns    = ColumnsTuple[1]
                         
         stockColumns  = ColumnsTuple[2]        
@@ -1145,26 +1314,64 @@ class AmoStrategy():
            
            bench_XY = idataXY_dict[bench_key]
            
-        #统一画图模块
-         
         
-        #画通达信板块指数
-        SheetName =u'行业指数'
-        bkp_tuple =(bkcodestr,Abkdict,idataXY_dict,AbkXY_dict,bench_XY,bench_key)
-        wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName)
-        
-        
-        #画规模指数  
-        SheetName =u'规模指数' 
-        gm_tuple =(scalestr,scaleDict,idataXY_dict,scaleXY_dict,bench_XY,bench_key)                
-        wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,stockColumns,gm_tuple,SheetName)
-        
-        #画通达信细分板块指数        
-        SheetName =u'行业细分指数'
-        xfbkp_tuple =(xfbkcodestr,Abkdict,idataXY_dict,AbkXY_dict,bench_XY,bench_key)        
-        wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,xdiColumns,xfbkp_tuple,SheetName)
-        
-              
+        if boardType==1:
+            #画通达信板块指数
+            SheetName =u'异动行业'
+            
+            bkp_tuple =(bkcodes,Abkdict,idataXY_dict,AbkXY_dict,bench_XY,bench_key)
+                 
+            wbk = self.bulidSigleExcelPic(wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName)
+            
+            #循环生成每个异动行业个股
+            for rl in ramolist:
+                
+                bkinfodf      = rl[1]
+                
+                bkstockdf     = rl[2]
+                
+                bkcodes       = rl[3]
+                
+                stockdf  = bkstockdf[['hq_code','hq_name']]
+                
+                bkstockdict = stockdf.to_dict(orient='list')
+                                                
+                bkcode      = bkinfodf['hq_code'].tolist()[0]
+                
+                bkname      = bkinfodf['hq_name'].tolist()[0]
+                
+                SheetName   = bkname +'('+bkcode +')'                               
+                
+                bkp_tuple =(bkcodes,bkstockdict,idataXY_dict,stockXY_dict,bench_XY,bench_key)
+                
+                wbk = self.bulidSigleExcelPic(wbk,IData_Sheet,stockColumns,bkp_tuple,SheetName)
+            
+
+                        
+            
+#            #画规模指数  
+#            SheetName =u'异动行业（个股）' 
+#            gm_tuple =(scalestr,scaleDict,idataXY_dict,stockXY_dict,bench_XY,bench_key)                
+#            wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,stockColumns,gm_tuple,SheetName)
+#        
+#        if boardType==2:
+#            #画通达信板块指数
+#            SheetName =u'异动概念'
+#            bkp_tuple =(bkcodes,Abkdict,idataXY_dict,AbkXY_dict,bench_XY,bench_key)
+#            wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName)
+#            
+#            
+#            #画规模指数  
+#            SheetName =u'异动概念（个股）' 
+#            gm_tuple =(scalestr,scaleDict,idataXY_dict,stockXY_dict,bench_XY,bench_key)                
+#            wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,stockColumns,gm_tuple,SheetName)
+##        
+#        #画通达信细分板块指数        
+#        SheetName =u'行业细分指数'
+#        xfbkp_tuple =(xfbkcodestr,Abkdict,idataXY_dict,AbkXY_dict,bench_XY,bench_key)        
+#        wbk = self.bulidUniformExcelPic(wbk,IData_Sheet,xdiColumns,xfbkp_tuple,SheetName)
+#        
+#              
         return wbk
         
     # 在excel中插入基准指数的数据，lef，top 分别代表 x，y坐标
@@ -1220,7 +1427,7 @@ class AmoStrategy():
            
         pwd   =  os.getcwd()
         
-        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep+"..")
+        fpwd  = os.path.abspath(os.path.dirname(pwd)+os.path.sep)
         
          
         if len(xdhead_idf)>0:
@@ -1253,44 +1460,30 @@ class AmoStrategy():
         
             IData_Sheet = wbk.add_worksheet(u'指数数据')
             
-            #画模块
-            headStr='指数强弱排名（涨幅）'
             
-            headvol= '指数量比（金额）'
+            headStr='强弱排名（涨幅）'
             
-            tailStr='指数强弱排名（跌幅）'
-            
-            tailvol= '指数量比（金额）'
-            
-            
+            headvol= '量比（金额）'
+                        
             xdiColumns= list([u'板块代码', u'板块名称', u'日期',u'时间', u'基准板块代码', u'基准板块名称', u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对量比', u'相对金额比'])
                   
             xdiColumnlens = len(xdiColumns) 
             
-            
-            xdsColumns= list([u'板块代码', u'板块名称',u'日期',u'时间', u'股票代码', u'股票名称',  u'收盘价', u'前收盘价', u'成交量',u'成交额' ,u'日相对涨跌幅', u'累计相对涨跌幅', u'相对金额比'])
-               
-            
+             
             red = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'C0504D','font_size':16,'font_color':'white'})
             
             blue = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'8064A2','font_size':16,'font_color':'white'})
-            
-            
             #间隔格式
             JG = wbk.add_format({'bg_color':'CCC0DA'})
             
             #处理第一行excel格式
-            QR_Sheet.merge_range(0,0,1,xdiColumnlens,headStr,red)         
-            QR_Sheet.set_column(xdiColumnlens+1,xdiColumnlens+1,0.3,JG)
+            QR_Sheet.merge_range(0,0,1,xdiColumnlens+10,headStr,red)         
+            QR_Sheet.set_column(xdiColumnlens+1+10,xdiColumnlens+1+10,0.3,JG)
     
-            QR_Sheet.merge_range(0,xdiColumnlens+2,1,2*xdiColumnlens+2,headvol,blue)               
-            QR_Sheet.set_column(2*xdiColumnlens+3,2*xdiColumnlens+3,0.3,JG)
-                    
-            QR_Sheet.merge_range(0,2*xdiColumnlens+4,1,3*xdiColumnlens+4,tailStr,red)                    
-            QR_Sheet.set_column(3*xdiColumnlens+5,3*xdiColumnlens+5,0.3,JG)
+            QR_Sheet.merge_range(0,xdiColumnlens+2+10,1,2*(xdiColumnlens+10)+2,headvol,blue)               
+            QR_Sheet.set_column(2*xdiColumnlens+3+20,2*xdiColumnlens+3+20,0.3,JG)
             
-            QR_Sheet.merge_range(0,3*xdiColumnlens+6,1,4*xdiColumnlens+6,tailvol,blue)
-        
+                    
             #基准数据写入数据sheet中
             if len(bmidf)>0:
                 bmidf_group = bmidf.groupby('hq_code')
@@ -1566,29 +1759,6 @@ class AmoStrategy():
         
         amolinedf = self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType)
         
-#            
-#         #获取所有指数排名数据(所有通达信行业) 
-#        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
-#        
-#        #对sortlist进行分离，求出行业与细分 
-#        (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict)
-        
-#        #获取所有指数排名数据(所有通达信行业) 
-#        (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
-#        
-#        #对sortlist进行分离，求出行业与细分 
-#        (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict)
-#        
-        
-#            
-#        #画出指数排名图形（所有图形）
-#        self.bulidAllIndexExcelFrame(ebmidf,axdtmp_idf,bkcodestr,scaleIndex,xdscale_idf,Abkdict,scaleDict,KlineType,fxflinedict)
-#                
-#        #画出指数排名图形（所有图形）
-        #self.bulidAllIndexExcelFrame(ebmidf,xdscale_idf,KlineType,fxflinedict)
-        
-        #画出指数排名图形
-        #self.bulidIndexExcelFrame(ebmidf,xdhead_idf,bkStockdict,bkStockChgdict,KlineType)
       
     #excel中plot相对指数强弱图形
     def dealBoardInfo(self,bkLinedf,bkxfdf,benchmarkName):
@@ -1786,7 +1956,7 @@ class AmoStrategy():
         
                        
         #删除多余数据
-        del tdxline_df,Abkdict
+        del tdxline_df
         
         gc.collect()
         
@@ -1816,6 +1986,8 @@ class AmoStrategy():
         
         bkstock_dict  = dict(list(bkstock_group))
         
+        bkcodes  =''
+        
         
         if int(ramolen*0.3)>=5:
             ramoRange = int(ramolen*0.3)
@@ -1828,6 +2000,11 @@ class AmoStrategy():
             ramoitem = ramolinelist[rlen]
             
             ramocode = ramoitem[0]
+            
+            if bkcodes=='':
+               bkcodes  = ramocode
+            else:
+               bkcodes  = bkcodes +','+ramocode 
 
             ramodf   = ramoitem[1]
             
@@ -1839,10 +2016,10 @@ class AmoStrategy():
                 
                 bkcodestr = ','.join(bkstock_id)
                 
-                bkcodestr = 'in('+bkcodestr+')'
+                bkcodestrs = 'in('+bkcodestr+')'
                 
                 #获取股票排名数据 
-                stock_df     =  self.getPlotStockData(startDate,endDate,KlineType,bkcodestr)
+                stock_df     =  self.getPlotStockData(startDate,endDate,KlineType,bkcodestrs)
                                
                 xdidf_ret   =  self.getBmiStockChg(stock_df,bmidf,bkstock_item)
                 
@@ -1850,7 +2027,15 @@ class AmoStrategy():
                 
                 stocklinedf =  stocklinedf.sort_values(['hq_abnNum','hq_abnavg'],ascending=False)
                 
-                ramotuple   =(ramocode,ramodf,stocklinedf)
+                scodes =  stocklinedf[['hq_code']]
+                
+                scodes = scodes.drop_duplicates() 
+                
+                bkstock_id   = scodes['hq_code'].astype('str')
+                
+                bkscodestr  = ','.join(bkstock_id)
+                                
+                ramotuple   =(ramocode,ramodf,stocklinedf,bkscodestr)
                 
                 ramolist.append(ramotuple)
                 
@@ -1864,7 +2049,7 @@ class AmoStrategy():
            (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict) 
         
             
-        self.bulidBoardExcelFrame(ebmidf,ramolist,linedf,stockdf,KlineType,boardType)
+        self.bulidBoardExcelFrame(ebmidf,ramolist,Abkdict,bkcodes,linedf,stockdf,KlineType,boardType)
         
         return 1     
         
@@ -1881,12 +2066,10 @@ if '__main__'==__name__:
     benchmarkIndex = '399317'
         
     benchmarkName  =u'国证A指'
-       
-    
+           
     KlineDict ={}
-    
-    
-    Adate='2017-09-18'    
+        
+    #Adate='2017-09-18'    
     #K线时间类型    
     KlineType ='5M'
         
