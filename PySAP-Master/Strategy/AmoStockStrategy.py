@@ -92,7 +92,7 @@ class AmoStrategy():
 
             preidf = idf['hq_preclose']
             
-            preidf.fillna(method='bfill')
+            preidf.fillna(method='bfill',inplace=True)
             
             
             idf['hq_chg']= ((idf['hq_close']/idf['hq_preclose'] -1)*100).round(2)
@@ -977,8 +977,7 @@ class AmoStrategy():
         
             #基准指数坐标   
             wbk  = self.bulidAllExcelPic(wbk,IData_Sheet,XY_Tuple,ColumnsTuple,ramolist,Abkdict,bkcodes,boardType)
-            
-            
+                        
         
         IData_Sheet.hide() 
         
@@ -1086,7 +1085,10 @@ class AmoStrategy():
                
               #指数参数设置
               shift =10
-               
+              
+              if not sheetflag:
+                 shift =5
+                 
               shift2  = 4
                
               style   = 1
@@ -1105,6 +1107,9 @@ class AmoStrategy():
               #画成交量与成交金额相对相对量比
            
               shift =12
+              
+              if not sheetflag:
+                 shift =6
                           
               shift2  = 13
            
@@ -1332,9 +1337,9 @@ class AmoStrategy():
                 
                 bkcodes       = rl[3]
                 
-                stockdf  = bkstockdf[['hq_code','hq_name']]
+                stockdf     = bkstockdf[['hq_code','hq_name']]
                 
-                bkstockdict = stockdf.to_dict(orient='list')
+                bkstockdict = dict(stockdf.values)
                                                 
                 bkcode      = bkinfodf['hq_code'].tolist()[0]
                 
@@ -1344,7 +1349,7 @@ class AmoStrategy():
                 
                 bkp_tuple =(bkcodes,bkstockdict,idataXY_dict,stockXY_dict,bench_XY,bench_key)
                 
-                wbk = self.bulidSigleExcelPic(wbk,IData_Sheet,stockColumns,bkp_tuple,SheetName)
+                wbk = self.bulidSigleExcelPic(wbk,IData_Sheet,xdiColumns,bkp_tuple,SheetName)
             
 
                         
@@ -1387,12 +1392,16 @@ class AmoStrategy():
             
            if len(dflist)==2:
                
+               print dflist[0]
+               
                bkidf_code  = dflist[0]
                                         
                bkidf_item  = dflist[1]
                
                bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
                
+               bkidf_item.fillna(method='bfill',inplace=True)
+                           
                bkidf_len   = len(bkidf_item)
                
                tmpdatalist = [bkidf_code,top,left,bkidf_len]
@@ -1672,8 +1681,9 @@ class AmoStrategy():
           
  
     #生成所有报表
-    def plotDataToReport(self,baseTuple,tdxlineTuple,tdxconceptTuple,KlineType,timeTuple):
-                
+    def plotDataToReport(self,baseTuple,tdxlineTuple,tdxconceptTuple,KlineTuple,timeTuple):
+        
+                       
         startDate = timeTuple[0]        
         endDate   = timeTuple[1]      
         
@@ -1703,6 +1713,8 @@ class AmoStrategy():
         cfcodestr   = tdxconceptTuple[1]   
         
         cfdf_xf     = tdxconceptTuple[2]
+        
+        KlineType   = KlineTuple[0]
                      
         #获取基准指数数         
         indexType = 'ScaleIndex'
@@ -1755,7 +1767,7 @@ class AmoStrategy():
         
         boardType =1 
         
-        indexDataTuple = (Abkcodestr,startDate,endDate,KlineType,indexType,fxflinedict)
+        indexDataTuple = (bkcodestr,startDate,endDate,KlineTuple,indexType,fxflinedict)
         
         amolinedf = self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType)
         
@@ -1879,42 +1891,45 @@ class AmoStrategy():
            abnormalValues=[]
        
            abnormalSum=[]
-              
-           for i in range(dataLen-KlineNum,dataLen):
-               
-               print i 
            
-               xdamo_Mean= amolinedf[i-KlineParam:i]['hq_xdamo'].mean()
+           if dataLen>KlineNum and dataLen>KlineParam :
+                  
+               for i in range(dataLen-KlineNum,dataLen):
+                   
+                   print i 
+                        
+                       
+                   xdamo_Mean= amolinedf[i-KlineParam:i]['hq_xdamo'].mean()
+                   
+                   xdamo_Std =  amolinedf[i-KlineParam:i]['hq_xdamo'].std()
                
-               xdamo_Std =  amolinedf[i-KlineParam:i]['hq_xdamo'].std()
-           
-               if xdamo_Std != 0:                   
-                   amo_Std=amolinedf.loc[i,'hq_xdamostd']=(amolinedf.iloc[i]['hq_xdamo']-xdamo_Mean)/xdamo_Std
+                   if xdamo_Std != 0:                   
+                       amo_Std=amolinedf.loc[i,'hq_xdamostd']=(amolinedf.iloc[i]['hq_xdamo']-xdamo_Mean)/xdamo_Std
+                   
+                   else:
+                       amo_Std=0
                
-               else:
-                   amo_Std=0
+                   if amo_Std>=threshold:
+                      abnormalNum+=1
+                      abnormalValues.append(amo_Std)
+                      abnormalSum.append(amolinedf.iloc[i]['hq_xdamo'])
+                
+                   abnormalValueSeries =pd.Series(abnormalValues)
+                   abnormalSumSeries =pd.Series(abnormalSum)
            
-               if amo_Std>=threshold:
-                  abnormalNum+=1
-                  abnormalValues.append(amo_Std)
-                  abnormalSum.append(amolinedf.iloc[i]['hq_xdamo'])
-            
-               abnormalValueSeries =pd.Series(abnormalValues)
-               abnormalSumSeries =pd.Series(abnormalSum)
-       
-           amolinedf['hq_abnNum']=abnormalNum
-           amolinedf['hq_abnavg']=abnormalValueSeries.mean()
-           amolinedf['hq_amoavg']=abnormalSumSeries.mean()
-           
-           amolinedf.dropna(inplace=True)
-           
-           if len(amolinedf)>0:
+               amolinedf['hq_abnNum']=abnormalNum
+               amolinedf['hq_abnavg']=abnormalValueSeries.mean()
+               amolinedf['hq_amoavg']=abnormalSumSeries.mean()
                
-               amolinedf = amolinedf[amolinedf['hq_xdamostd']>threshold]
-                                     
-               ramolinedf = ramolinedf.append(amolinedf)
+               amolinedf.dropna(inplace=True)
                
-               linedf     = linedf.append(lineitem)
+               if len(amolinedf)>0:
+                   
+                   amolinedf = amolinedf[amolinedf['hq_xdamostd']>threshold]
+                                         
+                   ramolinedf = ramolinedf.append(amolinedf)
+                   
+                   linedf     = linedf.append(lineitem)
            
        #test = dict(list(ramolinedf.groupby('hq_code')))
            
@@ -1929,42 +1944,42 @@ class AmoStrategy():
                
         #indexDataTuple = (Abkcodestr,startDate,endDate,KlineType,indexType)
         
-        Abkcodestr    = indexDataTuple[0]
+        Abkcodestr    =  indexDataTuple[0]
         
-        startDate     = indexDataTuple[1]
+        startDate     =  indexDataTuple[1]
         
-        endDate       = indexDataTuple[2]
+        endDate       =  indexDataTuple[2]
         
-        KlineType     = indexDataTuple[3]
+        KlineTuple    =  indexDataTuple[3]
         
-        indexType     = indexDataTuple[4]
+        indexType     =  indexDataTuple[4]
         
-        fxflinedict   = indexDataTuple[5]
+        fxflinedict   =  indexDataTuple[5]
+        
+        KlineType     =  KlineTuple[0]
+        
+        KlineNum      =  KlineTuple[1]
+        
+        KlineParam    =  KlineTuple[2]
         
         ramolist      = []
         
         stockdf     = pd.DataFrame()
         
         tdxline_df    = self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
-        
-        
+                
         if 'hq_time' not in tdxline_df.columns:
             tdxline_df['hq_time']  = '00:00:00'
             
          #获取所有指数排名数据(所有通达信行业) 
         (AxdLine_idf,AlineSortlist) = self.getIndexXdQr(bmidf,tdxline_df,Abkdict)
-        
-                       
+          
         #删除多余数据
         del tdxline_df
         
         gc.collect()
+                        
         
-        #取几日数据
-        KlineNum = 5
-        
-        #算多少日标准差
-        KlineParam =20
         
         #标准差阈值
         threshold = 3
@@ -2020,7 +2035,11 @@ class AmoStrategy():
                 
                 #获取股票排名数据 
                 stock_df     =  self.getPlotStockData(startDate,endDate,KlineType,bkcodestrs)
-                               
+                
+                        
+                if 'hq_time' not in stock_df.columns:
+                    stock_df['hq_time']  = '00:00:00'
+                                       
                 xdidf_ret   =  self.getBmiStockChg(stock_df,bmidf,bkstock_item)
                 
                 (stocklinedf,slinedf) =  self.dealBoardAmo(xdidf_ret, KlineNum ,KlineParam,threshold)
@@ -2040,6 +2059,8 @@ class AmoStrategy():
                 ramolist.append(ramotuple)
                 
                 stockdf = stockdf.append(slinedf)
+                
+                stockdf = stockdf.drop_duplicates() 
                         
         #处理excel中的指数数据
         ebmidf  = self.getExcelIndexData(bmidf,benchmarkName)    
@@ -2074,14 +2095,14 @@ if '__main__'==__name__:
     KlineType ='5M'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-09-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
     
     end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
     timetuple   =(start_date,end_date)
     
     KlineDict[KlineType] = timetuple
-#        
+        
     #K线时间类型   
     KlineType ='D'
         
@@ -2129,14 +2150,28 @@ if '__main__'==__name__:
     
     #通达信概念
     tdxconceptTuple =(cfdict,cfcodestr,cfdf_xf)
-    
+        
     for kdict in KlineDict:
        #指数分类对比图
        KlineType = kdict
        
        timeTuple = KlineDict[KlineType] 
+       
+       if KlineType=='D':                 
+          #取几日数据
+          KlineNum = 5          
+          #算多少日标准差
+          KlineParam =20
+       
+       if KlineType=='5M':                 
+          #取几日数据
+          KlineNum = 240          
+          #算多少日标准差
+          KlineParam =960   
+             
+       KlineTuple =(KlineType,KlineNum,KlineParam)
     
-       amosty.plotDataToReport(baseTuple,tdxlineTuple,tdxconceptTuple,KlineType,timeTuple)
+       amosty.plotDataToReport(baseTuple,tdxlineTuple,tdxconceptTuple,KlineTuple,timeTuple)
     
     
     #所有指数强弱，量比图
