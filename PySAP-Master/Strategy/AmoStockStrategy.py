@@ -541,7 +541,7 @@ class AmoStrategy():
         if KlineType=='5M':
            interval_unit = 48
         else:           
-           interval_unit = 7 
+           interval_unit = 10 
        
        
         data_top2   = bench_XY[1]
@@ -578,9 +578,7 @@ class AmoStrategy():
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
              'line':{'color':'blue'}, 
-             'y2_axis': True, 
-
-                      
+           
              })
              
         if style==2:     
@@ -593,14 +591,14 @@ class AmoStrategy():
             
              }) 
                           
-             bk_chart.add_series({
-             'name':[idxstr, data_top2, data_left2+shift2],
-             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
-             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
-             'line':{'color':'708090'},  
-             'y2_axis': True, 
-          
-             })
+#             bk_chart.add_series({
+#             'name':[idxstr, data_top2, data_left2+shift2],
+#             'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
+#             'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
+#             'line':{'color':'708090'},  
+#           
+#          
+#             })
                  
         if style==3:
             
@@ -618,8 +616,7 @@ class AmoStrategy():
              'categories':[idxstr, data_top2+1, data_left2+2, data_top2+bkidf_len2, data_left2+2],
              'values':[idxstr, data_top2+1, data_left2+shift2, data_top2+bkidf_len2, data_left2+shift2],
              'line':{'color':'black'}, 
-             'y2_axis': True,  
-                      
+             
              })   
              
         #bold = wbk.add_format({'bold': 1})
@@ -879,7 +876,32 @@ class AmoStrategy():
            
         
         return bk_chart     
-      
+        
+    def dealStockBoardIndex(self,bmi_index,stockidf_list):
+        
+        retlist = []
+        
+        for stl in stockidf_list:
+            
+            tmpcode = stl[0]
+            
+            tmpdf   = stl[1]   
+            
+            tmpdf['hq_date'] = tmpdf['hq_date'].astype('str')
+            
+            tmpdf.set_index(['hq_date','hq_time'],inplace=True,drop = False)
+                        
+            tmpdf = tmpdf.reindex(bmi_index)
+            
+            tmptuple = (tmpcode,tmpdf)
+                        
+            retlist.append(tmptuple)
+        
+        del tmpcode,tmpdf,tmptuple,stockidf_list
+        
+        gc.collect()
+                    
+        return retlist
     
     def bulidBoardExcelFrame(self,ebmidf,ramolist,Abkdict,bkcodes,linedf,stockdf,KlineType,boardType):
         
@@ -941,6 +963,14 @@ class AmoStrategy():
             (IData_Sheet,idataXY_dict) = self.bulidIndexDataToExcel(bmi_list,IData_Sheet,bmiColumns,data_left,data_top)
             
             data_left = data_left +len(bmiColumns) +2
+            
+            bmi_tuple    =  bmi_list[0]
+            
+            bmi_df       =  bmi_tuple[1]
+            
+            bmi_df.set_index(['hq_date','hq_time'],inplace=True,drop = False)
+            
+            bmi_index    = bmi_df.index
            
         #行业指数，概念指数 数据写入数据sheet中
         if len(ramolist)>0 :
@@ -948,6 +978,8 @@ class AmoStrategy():
             axdtmp_group = linedf.groupby('hq_code',sort=False)
     
             abkidf_list = list(axdtmp_group)
+            
+            #abkidf_list = self.dealStockBoardIndex(bmi_index,abkidf_list)
             
             #abkColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
             
@@ -965,6 +997,7 @@ class AmoStrategy():
             #abkColumns = list([u'规模指数代码', u'规模指数名称', u'日期',u'时间', u'收盘价', u'前收盘价', u'成交量', u'涨跌幅', u'累涨跌幅',u'总成交量',u'总成交额'])
             
             #未处理多个基准标的比较问题，以及标的指数与板块数据不一致的问题
+            stockidf_list = self.dealStockBoardIndex(bmi_index,stockidf_list)
                   
             (IData_Sheet,stockXY_dict) = self.bulidIndexDataToExcel(stockidf_list,IData_Sheet,stockColumns,data_left,data_top)
             
@@ -1089,7 +1122,7 @@ class AmoStrategy():
               if not sheetflag:
                  shift =5
                  
-              shift2  = 4
+              shift2  = 8
                
               style   = 1
              
@@ -1108,11 +1141,13 @@ class AmoStrategy():
            
               shift =12
               
+              shift2  = 13
+              
+              
               if not sheetflag:
                  shift =6
-                          
-              shift2  = 13
-           
+                 shift2 =6
+                 
               style  =2
              
               bkchar_tuple2 =(bench_XY,bkXY_Tuple,shift,shift2,style)
@@ -1978,9 +2013,7 @@ class AmoStrategy():
         del tdxline_df
         
         gc.collect()
-                        
-        
-        
+                                
         #标准差阈值
         threshold = 3
         
@@ -2091,17 +2124,17 @@ if '__main__'==__name__:
     KlineDict ={}
         
     #Adate='2017-09-18'    
-    #K线时间类型    
-    KlineType ='5M'
-        
-    #获取数据起始时间
-    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
-    
-    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
-    
-    timetuple   =(start_date,end_date)
-    
-    KlineDict[KlineType] = timetuple
+#    #K线时间类型    
+#    KlineType ='5M'
+#        
+#    #获取数据起始时间
+#    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
+#    
+#    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
+#    
+#    timetuple   =(start_date,end_date)
+#    
+#    KlineDict[KlineType] = timetuple
         
     #K线时间类型   
     KlineType ='D'
