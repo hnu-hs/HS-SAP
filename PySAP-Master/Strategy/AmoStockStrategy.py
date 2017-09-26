@@ -897,7 +897,7 @@ class AmoStrategy():
                         
             retlist.append(tmptuple)
         
-        del tmpcode,tmpdf,tmptuple,stockidf_list
+        del tmpcode,tmpdf,stockidf_list
         
         gc.collect()
                     
@@ -1056,22 +1056,22 @@ class AmoStrategy():
         
         #画模块
         headStr='强弱排名（涨幅）'
-        
-        headvol= '量比（金额）'
+#        
+#        headvol= '量比（金额）'
         
          
         red = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'C0504D','font_size':16,'font_color':'white'})
         
-        blue = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'8064A2','font_size':16,'font_color':'white'})
-        #间隔格式
+#        blue = wbk.add_format({'border':4,'align':'center','valign': 'vcenter','bg_color':'8064A2','font_size':16,'font_color':'white'})
+#        #间隔格式
         JG = wbk.add_format({'bg_color':'CCC0DA'})
         
         #处理第一行excel格式
         QR_Sheet.merge_range(0,0,1,xdiColumnlens+10,headStr,red)         
         QR_Sheet.set_column(xdiColumnlens+1+10,xdiColumnlens+1+10,0.3,JG)
-
-        QR_Sheet.merge_range(0,xdiColumnlens+2+10,1,2*(xdiColumnlens+10)+2,headvol,blue)               
-        QR_Sheet.set_column(2*xdiColumnlens+3+20,2*xdiColumnlens+3+20,0.3,JG)
+#
+#        QR_Sheet.merge_range(0,xdiColumnlens+2+10,1,2*(xdiColumnlens+10)+2,headvol,blue)               
+#        QR_Sheet.set_column(2*xdiColumnlens+3+20,2*xdiColumnlens+3+20,0.3,JG)
                
            
         pic_left  = 0    #图像起始列 
@@ -1090,14 +1090,6 @@ class AmoStrategy():
            
            bkname = ''
            
-           if lastfile==dflist: 
-               lastflag = True
-           
-           test1 = Abkdict.has_key(int(dflist))
-           
-           test2 = AbkXY_dict.has_key(int(dflist))
-           
-           test3 = idataXY_dict.has_key(int(bench_key))
            
            if Abkdict.has_key(int(dflist)) and AbkXY_dict.has_key(int(dflist)) and idataXY_dict.has_key(int(bench_key)):
                
@@ -1132,10 +1124,12 @@ class AmoStrategy():
               bk_chart = self.bulidChart(wbk,bkchar_tuple,bktiles,idxstr,KlineType)
               #画出双轴对比图
            
-              QR_Sheet.insert_chart( pic_top, pic_left,bk_chart)
+              QR_Sheet.insert_chart( pic_top, pic_left,bk_chart)              
+              
+              pic_top+=23
               #bg+=19       
          
-              pic_left+=len(xdiColumns)+2+10 
+              #pic_left+=len(xdiColumns)+2+10 
            
               #画成交量与成交金额相对相对量比
            
@@ -1161,9 +1155,9 @@ class AmoStrategy():
              #bg+=19       
            
               pic_top+=23
-           
-              if lastfile!=dflist: 
-                 pic_left-=len(xdiColumns) +2+10 
+#           
+#              if lastfile!=dflist: 
+#                 pic_left-=len(xdiColumns) +2+10 
            
               bktiles =''
                  
@@ -1429,13 +1423,20 @@ class AmoStrategy():
                
                print dflist[0]
                
+               
                bkidf_code  = dflist[0]
                                         
-               bkidf_item  = dflist[1]
+               bkidf_item  = dflist[1]               
+       
+               if bkidf_code==2052:
+                   m =1
+               
                
                bkidf_item['hq_date'] = bkidf_item['hq_date'].astype('str')
                
                bkidf_item.fillna(method='bfill',inplace=True)
+               
+               bkidf_item.fillna(method='ffill',inplace=True)
                            
                bkidf_len   = len(bkidf_item)
                
@@ -1804,7 +1805,18 @@ class AmoStrategy():
         
         indexDataTuple = (bkcodestr,startDate,endDate,KlineTuple,indexType,fxflinedict)
         
-        amolinedf = self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType)
+        self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType)
+        
+        #通达信概念指数         
+        indexType = 'BoardIndex'
+        
+        isXf  = False
+        
+        boardType =2 
+        
+        conceptDataTuple = (cfcodestr,startDate,endDate,KlineTuple,indexType)
+        
+        self.plotTdxBoardData(conceptDataTuple,bmidf,cfdict,cfdf_xf,isXf,boardType)
         
       
     #excel中plot相对指数强弱图形
@@ -1989,7 +2001,8 @@ class AmoStrategy():
         
         indexType     =  indexDataTuple[4]
         
-        fxflinedict   =  indexDataTuple[5]
+        if boardType==1:
+           fxflinedict   =  indexDataTuple[5]
         
         KlineType     =  KlineTuple[0]
         
@@ -2072,6 +2085,8 @@ class AmoStrategy():
                         
                 if 'hq_time' not in stock_df.columns:
                     stock_df['hq_time']  = '00:00:00'
+                
+                stock_df['hq_time'] =  stock_df['hq_time'].astype('str')
                                        
                 xdidf_ret   =  self.getBmiStockChg(stock_df,bmidf,bkstock_item)
                 
@@ -2081,7 +2096,7 @@ class AmoStrategy():
                 
                 scodes =  stocklinedf[['hq_code']]
                 
-                scodes = scodes.drop_duplicates() 
+                scodes =  scodes.drop_duplicates() 
                 
                 bkstock_id   = scodes['hq_code'].astype('str')
                 
@@ -2101,11 +2116,13 @@ class AmoStrategy():
         if isXf:
             #对sortlist进行分离，求出行业与细分 
            (tdxdict,linesortlist,tdxXfdict,xflinesortlist) = self.dealTdxLine(AlineSortlist,fxflinedict) 
-        
-            
+                    
         self.bulidBoardExcelFrame(ebmidf,ramolist,Abkdict,bkcodes,linedf,stockdf,KlineType,boardType)
         
-        return 1     
+        del stockdf,linedf,ramolist,stocklinedf,stock_df
+        
+        gc.collect()
+        
         
 if '__main__'==__name__:  
         
@@ -2124,23 +2141,23 @@ if '__main__'==__name__:
     KlineDict ={}
         
     #Adate='2017-09-18'    
-#    #K线时间类型    
-#    KlineType ='5M'
-#        
-#    #获取数据起始时间
-#    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
-#    
-#    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
-#    
-#    timetuple   =(start_date,end_date)
-#    
-#    KlineDict[KlineType] = timetuple
+    #K线时间类型    
+    KlineType ='5M'
+        
+    #获取数据起始时间
+    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
+    
+    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
+    
+    timetuple   =(start_date,end_date)
+    
+    KlineDict[KlineType] = timetuple
         
     #K线时间类型   
     KlineType ='D'
         
     #获取数据起始时间
-    start_date = datetime.strptime("2017-01-01", "%Y-%m-%d")
+    start_date = datetime.strptime("2017-05-01", "%Y-%m-%d")
     
     end_date   = datetime.strptime(Adate, "%Y-%m-%d")
     
@@ -2198,7 +2215,7 @@ if '__main__'==__name__:
        
        if KlineType=='5M':                 
           #取几日数据
-          KlineNum = 240          
+          KlineNum = 96          
           #算多少日标准差
           KlineParam =960   
              
