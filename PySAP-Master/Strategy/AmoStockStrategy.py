@@ -103,6 +103,7 @@ class AmoStrategy():
             idf['hq_allchg'] = np.where(idf['hq_allchg']==np.inf, -1, idf['hq_allchg'])
                         
             idf['hq_chg'] = np.where(idf['hq_chg']==np.inf, -1, idf['hq_chg'])
+            
                     
         idf_ret = idf
         
@@ -402,6 +403,8 @@ class AmoStrategy():
             #生成基准指数累计涨跌幅度
             xdhidf   = self.getIndexOrStockChg(bmidf)
             
+            
+            
             bmi_len   = len(bmidf)
             
             xdhindex  = xdhidf.index
@@ -412,6 +415,9 @@ class AmoStrategy():
             for dfdict in  hkidf_dict:
                 
                 print dfdict
+                                
+                if dfdict==880950:
+                    m =1
                                 
                 dictcount  = dictcount +1
                 
@@ -429,13 +435,15 @@ class AmoStrategy():
                 
                 if hidf_len!=bmi_len:
                     hidf_item = hidf_item.reindex(xdhindex)
+                    
+               
+                hidf_item.fillna(method='bfill',inplace=True)
+                    
                
                 tmpdf      = hidf_item.copy()
                
                 tmpidf.set_index(['index'], inplace = True)
-                
-                tmpdf.set_index(['index'], inplace = True)
-                
+                                
                 tmpdf.loc[:,['hq_code']]  = str(dfdict)
                 
                 tmpdf['hq_bmcode']  = benchmarkIndex 
@@ -1796,18 +1804,20 @@ class AmoStrategy():
        
         bmidf['hq_time'] = bmidf['hq_time'].astype('str')
         
-        #获取通达信各指数             
-        indexType = 'BoardIndex'
-        
-        isXf  = True
-        
-        boardType =1 
-        
-        indexDataTuple = (bkcodestr,startDate,endDate,KlineTuple,indexType,fxflinedict)
-        
-        self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType)
-        
-        #通达信概念指数         
+        bmidf.set_index(['index'], inplace = True, drop = False )
+#        
+#        #获取通达信各指数             
+#        indexType = 'BoardIndex'
+#        
+#        isXf  = True
+#        
+#        boardType =1 
+#        
+#        indexDataTuple = (bkcodestr,startDate,endDate,KlineTuple,indexType,fxflinedict)
+#        
+#        self.plotTdxBoardData(indexDataTuple,bmidf,Abkdict,Abkxfdf,isXf,boardType)
+#        
+#        #通达信概念指数         
         indexType = 'BoardIndex'
         
         isXf  = False
@@ -2012,9 +2022,11 @@ class AmoStrategy():
         
         ramolist      = []
         
-        stockdf     = pd.DataFrame()
+        stockdf       = pd.DataFrame()       
         
         tdxline_df    = self.getPlotIndexData(Abkcodestr,startDate,endDate,KlineType,indexType)
+        
+        tdxline_df.set_index(['index'], inplace = True, drop = False )
                 
         if 'hq_time' not in tdxline_df.columns:
             tdxline_df['hq_time']  = '00:00:00'
@@ -2048,8 +2060,7 @@ class AmoStrategy():
         bkstock_dict  = dict(list(bkstock_group))
         
         bkcodes  =''
-        
-        
+                
         if int(ramolen*0.3)>=5:
             ramoRange = int(ramolen*0.3)
         
@@ -2082,6 +2093,8 @@ class AmoStrategy():
                 #获取股票排名数据 
                 stock_df     =  self.getPlotStockData(startDate,endDate,KlineType,bkcodestrs)
                 
+                stockRange   = 10
+                
                         
                 if 'hq_time' not in stock_df.columns:
                     stock_df['hq_time']  = '00:00:00'
@@ -2092,22 +2105,48 @@ class AmoStrategy():
                 
                 (stocklinedf,slinedf) =  self.dealBoardAmo(xdidf_ret, KlineNum ,KlineParam,threshold)
                 
-                stocklinedf =  stocklinedf.sort_values(['hq_abnNum','hq_abnavg'],ascending=False)
+                stocklinedf     =  stocklinedf.sort_values(['hq_abnNum','hq_abnavg'],ascending=False)
                 
-                scodes =  stocklinedf[['hq_code']]
+                stock_group     = stocklinedf.groupby('hq_code',sort=False)
                 
-                scodes =  scodes.drop_duplicates() 
+                stockSortlist   = list(stock_group)
                 
-                bkstock_id   = scodes['hq_code'].astype('str')
+                stocklen        = len(stockSortlist)
+                                        
+                if int(stocklen*0.3)>=10:
+                    stockRange = int(stocklen*0.3)
                 
-                bkscodestr  = ','.join(bkstock_id)
-                                
-                ramotuple   =(ramocode,ramodf,stocklinedf,bkscodestr)
+                if  stocklen<=10:
+                    stockRange = stocklen
+                
+                bkscodestr = ''                             
+                
+                stockItemdf   = pd.DataFrame()
+        
+                for slen in range(stockRange):
+                    
+                    slistTuple  = stockSortlist[slen]
+                    
+                    scode       = slistTuple[0]
+                    
+                    slistItem   = slistTuple[1]
+                    
+                    soriginItem = slinedf[slinedf['hq_code']==scode]
+                                        
+                    if bkscodestr!='':
+                        bkscodestr = str(scode)
+                    else:
+                        bkscodestr = bkscodestr +','+str(scode)
+                        
+                    stockItemdf  = stockItemdf.append(slistItem)
+                    
+                    stockdf = stockdf.append(soriginItem)
+                    
+                    
+                ramotuple   =(ramocode,ramodf,stockItemdf,bkscodestr)
                 
                 ramolist.append(ramotuple)
-                
-                stockdf = stockdf.append(slinedf)
-                
+                                
                 stockdf = stockdf.drop_duplicates() 
                         
         #处理excel中的指数数据
@@ -2119,7 +2158,7 @@ class AmoStrategy():
                     
         self.bulidBoardExcelFrame(ebmidf,ramolist,Abkdict,bkcodes,linedf,stockdf,KlineType,boardType)
         
-        del stockdf,linedf,ramolist,stocklinedf,stock_df
+        del stockdf,linedf,ramolist,stocklinedf,stock_df,xdidf_ret,slinedf
         
         gc.collect()
         
@@ -2141,18 +2180,18 @@ if '__main__'==__name__:
     KlineDict ={}
         
     #Adate='2017-09-18'    
-    #K线时间类型    
-    KlineType ='5M'
-        
-    #获取数据起始时间
-    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
-    
-    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
-    
-    timetuple   =(start_date,end_date)
-    
-    KlineDict[KlineType] = timetuple
-        
+#    #K线时间类型    
+#    KlineType ='5M'
+#        
+#    #获取数据起始时间
+#    start_date = datetime.strptime("2017-08-01", "%Y-%m-%d")
+#    
+#    end_date   = datetime.strptime(Adate, "%Y-%m-%d")
+#    
+#    timetuple   =(start_date,end_date)
+#    
+#    KlineDict[KlineType] = timetuple
+#        
     #K线时间类型   
     KlineType ='D'
         
